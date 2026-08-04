@@ -1,0 +1,449 @@
+.projects-page {
+  flex: 1;
+  height: 100vh;
+  padding: 30px;
+  background: #f5f7fb;
+  overflow-y: auto;
+}
+
+.projects-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.projects-header h1 {
+  font-size: 28px;
+  color: #111827;
+}
+
+.projects-header p {
+  margin-top: 6px;
+  color: #6b7280;
+}
+
+.create-project-btn {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #111827;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.create-project-btn:hover {
+  background: #1f2937;
+}
+
+
+/* ==========================================
+   PROJECT LIST
+========================================== */
+
+.projects-list {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(300px, 1fr)
+  );
+  gap: 20px;
+}
+
+.project-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.project-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.project-card-header h2 {
+  font-size: 18px;
+  color: #111827;
+}
+
+.project-status {
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 12px;
+}
+
+.project-card > p {
+  margin-top: 15px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.project-tech {
+  margin-top: 15px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.project-card-footer {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e5e7eb;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.project-card-footer span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.view-project-btn {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.view-project-btn:hover {
+  background: #f3f4f6;
+}
+
+
+/* ==========================================
+   MODAL
+========================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+
+  background: rgba(0, 0, 0, 0.4);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 20px;
+
+  z-index: 1000;
+}
+
+.project-modal {
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.modal-header h2 {
+  font-size: 21px;
+}
+
+.close-btn {
+  border: none;
+  background: transparent;
+  font-size: 25px;
+  cursor: pointer;
+}
+
+.close-btn:hover {
+  color: #6b7280;
+}
+
+.project-modal form {
+  display: flex;
+  flex-direction: column;
+}
+
+.project-modal label {
+  margin-bottom: 7px;
+  margin-top: 15px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.project-modal input,
+.project-modal textarea {
+  width: 100%;
+  padding: 11px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+
+  font-family: inherit;
+  font-size: 14px;
+
+  outline: none;
+}
+
+.project-modal input:focus,
+.project-modal textarea:focus {
+  border-color: #6b7280;
+}
+
+.project-modal textarea {
+  resize: vertical;
+}
+
+
+/* ==========================================
+   PROJECT MEMBERS
+========================================== */
+
+.member-input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.member-input-row input {
+  min-width: 0;
+}
+
+.add-member-btn {
+  padding: 11px 14px;
+  border: none;
+  border-radius: 7px;
+  background: #374151;
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.add-member-btn:hover {
+  background: #1f2937;
+}
+
+
+/* ==========================================
+   ADDED MEMBERS LIST
+========================================== */
+
+.members-list {
+  margin-top: 18px;
+  padding: 15px;
+
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.members-list h4 {
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.member-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 10px;
+
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 7px;
+
+  margin-bottom: 8px;
+}
+
+.member-item:last-child {
+  margin-bottom: 0;
+}
+
+.member-item > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.member-item strong {
+  font-size: 14px;
+  color: #111827;
+}
+
+.member-item span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.member-item small {
+  font-size: 12px;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.remove-member-btn {
+  width: 28px;
+  height: 28px;
+
+  border: none;
+  border-radius: 50%;
+
+  background: #fee2e2;
+  color: #b91c1c;
+
+  font-size: 18px;
+  cursor: pointer;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.remove-member-btn:hover {
+  background: #fecaca;
+}
+
+
+/* ==========================================
+   MODAL ACTIONS
+========================================== */
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 25px;
+}
+
+.cancel-btn,
+.save-project-btn {
+  padding: 10px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  border: 1px solid #d1d5db;
+  background: white;
+}
+
+.cancel-btn:hover {
+  background: #f3f4f6;
+}
+
+.save-project-btn {
+  border: none;
+  background: #111827;
+  color: white;
+}
+
+.save-project-btn:hover {
+  background: #1f2937;
+}
+
+.save-project-btn:disabled,
+.cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
+/* ==========================================
+   LOADING / EMPTY / ERROR
+========================================== */
+
+.projects-message {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.projects-error {
+  margin-bottom: 20px;
+  padding: 12px 15px;
+
+  background: #fee2e2;
+  color: #b91c1c;
+
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.empty-projects {
+  padding: 50px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.empty-projects h2 {
+  color: #111827;
+  font-size: 20px;
+}
+
+.empty-projects p {
+  margin-top: 8px;
+  color: #6b7280;
+}
+
+
+/* ==========================================
+   RESPONSIVE
+========================================== */
+
+@media (max-width: 700px) {
+
+  .projects-page {
+    padding: 20px;
+  }
+
+  .projects-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .create-project-btn {
+    width: 100%;
+  }
+
+  .member-input-row {
+    grid-template-columns: 1fr;
+  }
+
+  .add-member-btn {
+    width: 100%;
+  }
+
+  .project-modal {
+    max-height: 95vh;
+    padding: 20px;
+  }
+
+  .project-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .view-project-btn {
+    width: 100%;
+  }
+}

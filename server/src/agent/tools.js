@@ -33,6 +33,37 @@ export const TOOLS = [
   {
     type: "function",
     function: {
+      name: "update_task_priority",
+      description: "Propose changing a task's priority",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string" },
+          priority: { type: "string", enum: ["low", "medium", "high"] },
+        },
+        required: ["task_id", "priority"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_task_deadline",
+      description: "Propose changing a task's deadline",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string" },
+          deadline: { type: "string", format: "date-time" },
+        },
+        required: ["task_id", "deadline"],
+      },
+    },
+  },
+ 
+  {
+    type: "function",
+    function: {
       name: "update_project_status",
       description: "Propose changing a project's status",
       parameters: {
