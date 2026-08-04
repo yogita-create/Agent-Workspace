@@ -1,0 +1,228 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f5f7fb;
+  color: #111827;
+}
+
+button {
+  font-family: inherit;
+}
+
+.app {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ==========================================
+   MAIN CONTENT
+========================================== */
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ==========================================
+   HEADER
+========================================== */
+
+.main-header {
+  height: 76px;
+  padding: 0 28px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.main-header h2 {
+  margin: 0 0 4px;
+  font-size: 22px;
+}
+
+.main-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.notification-button {
+  width: 42px;
+  height: 42px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.notification-button:hover {
+  background: #e5e7eb;
+}
+
+.user-profile {
+  padding: 10px 16px;
+  background: #f3f4f6;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+/* ==========================================
+   PAGE CONTENT
+========================================== */
+
+.page-content {
+  flex: 1;
+  min-height: calc(100vh - 82px);
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+/* ==========================================
+   DASHBOARD
+========================================== */
+
+.dashboard-page {
+  padding: 30px;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 30px;
+}
+
+.dashboard-header h1 {
+  margin: 0 0 8px;
+  font-size: 30px;
+}
+
+.dashboard-header p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.dashboard-user {
+  padding: 12px 18px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.dashboard-card {
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+}
+
+.dashboard-card span {
+  font-size: 26px;
+}
+
+.dashboard-card h3 {
+  margin: 18px 0 8px;
+}
+
+.dashboard-card p {
+  margin: 0;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.dashboard-welcome {
+  margin-top: 25px;
+  padding: 28px;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+}
+
+.dashboard-welcome h2 {
+  margin-top: 0;
+}
+
+/* ==========================================
+   EMPTY PAGES
+========================================== */
+
+.empty-page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.empty-page h2 {
+  margin: 0;
+}
+
+.empty-page p {
+  color: #6b7280;
+}
+
+.empty-page button {
+  padding: 11px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #111827;
+  color: white;
+  cursor: pointer;
+}
+
+/* ==========================================
+   RESPONSIVE
+========================================== */
+
+@media (max-width: 1000px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .main-header {
+    padding: 0 15px;
+  }
+
+  .user-profile {
+    display: none;
+  }
+
+  .dashboard-page {
+    padding: 20px;
+  }
+}

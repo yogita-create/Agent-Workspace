@@ -1,0 +1,477 @@
+/* ==========================================
+   DASHBOARD
+========================================== */
+
+.dashboard {
+  width: 100%;
+  min-height: 100%;
+  padding: 36px 32px;
+  box-sizing: border-box;
+}
+
+
+/* ==========================================
+   DASHBOARD HEADER
+========================================== */
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.dashboard-header h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.dashboard-header p {
+  margin: 0;
+  font-size: 16px;
+  color: #64748b;
+}
+
+.dashboard-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #334155;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+
+/* ==========================================
+   QUICK ACCESS CARDS
+========================================== */
+
+.dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+  margin-bottom: 32px;
+}
+
+
+/* ==========================================
+   DASHBOARD CARD
+========================================== */
+
+.dashboard-card {
+  min-height: 190px;
+  padding: 26px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-sizing: border-box;
+  cursor: pointer;
+
+  display: flex;
+  flex-direction: column;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-3px);
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+
+/* ==========================================
+   CARD ICON
+========================================== */
+
+.card-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 28px;
+  background: #f8fafc;
+  border-radius: 10px;
+}
+
+
+/* ==========================================
+   CARD CONTENT
+========================================== */
+
+.dashboard-card h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 650;
+  color: #111827;
+}
+
+.dashboard-card p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+/* ==========================================
+   APPROVAL ACTION CARD
+========================================== */
+
+.action-card {
+  width: 100%;
+  max-width: 520px;
+
+  margin-top: 16px;
+  padding: 20px;
+
+  background: #ffffff;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.04);
+
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.action-card:hover {
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.07);
+}
+
+
+/* ==========================================
+   CARD HEADER
+========================================== */
+
+.action-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-bottom: 16px;
+}
+
+.action-card-icon {
+  font-size: 20px;
+}
+
+.action-card-header h3 {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 16px;
+  font-weight: 700;
+}
+
+
+/* ==========================================
+   ACTION TYPE
+========================================== */
+
+.action-type {
+  margin-bottom: 16px;
+
+  color: #111827;
+
+  font-size: 15px;
+  font-weight: 600;
+}
+
+
+/* ==========================================
+   ACTION DETAILS
+========================================== */
+
+.action-details {
+  display: flex;
+  flex-direction: column;
+
+  gap: 10px;
+
+  padding: 14px;
+
+  background: #f9fafb;
+
+  border: 1px solid #f0f0f0;
+
+  border-radius: 8px;
+}
+
+.action-detail {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  font-size: 14px;
+}
+
+.action-detail span {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.action-detail strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+
+/* ==========================================
+   PENDING STATUS
+========================================== */
+
+.pending-status {
+  margin-top: 14px;
+
+  color: #6b7280;
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+
+/* ==========================================
+   ACTION BUTTONS
+========================================== */
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  margin-top: 18px;
+}
+
+.action-buttons button {
+  min-width: 100px;
+
+  padding: 9px 16px;
+
+  border: none;
+  border-radius: 7px;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+
+/* ==========================================
+   APPROVE
+========================================== */
+
+.approve-btn {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.approve-btn:hover:not(:disabled) {
+  background: #15803d;
+
+  transform: translateY(-1px);
+}
+
+
+/* ==========================================
+   REJECT
+========================================== */
+
+.reject-btn {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.reject-btn:hover:not(:disabled) {
+  background: #b91c1c;
+
+  transform: translateY(-1px);
+}
+
+
+/* ==========================================
+   DISABLED
+========================================== */
+
+.action-buttons button:disabled {
+  opacity: 0.6;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* ==========================================
+   APPROVED CARD
+========================================== */
+
+.action-card.success {
+  border-left: 4px solid #16a34a;
+}
+
+.approved-result {
+  margin-top: 16px;
+
+  padding: 10px 12px;
+
+  background: #f0fdf4;
+
+  border-radius: 7px;
+
+  color: #15803d;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+
+/* ==========================================
+   REJECTED CARD
+========================================== */
+
+.action-card.rejected {
+  border-left: 4px solid #dc2626;
+}
+
+.rejected-result {
+  margin-top: 16px;
+
+  padding: 10px 12px;
+
+  background: #fef2f2;
+
+  border-radius: 7px;
+
+  color: #b91c1c;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+
+/* ==========================================
+   MOBILE
+========================================== */
+
+@media (max-width: 600px) {
+
+  .action-card {
+    max-width: 100%;
+
+    padding: 16px;
+  }
+
+  .action-card-header h3 {
+    font-size: 14px;
+  }
+
+  .action-type {
+    font-size: 14px;
+  }
+
+  .action-buttons {
+    width: 100%;
+  }
+
+  .action-buttons button {
+    flex: 1;
+
+    min-width: 0;
+  }
+
+}
+/* ==========================================
+   WELCOME SECTION
+========================================== */
+
+.dashboard-welcome {
+  padding: 32px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.dashboard-welcome h2 {
+  margin: 0 0 12px;
+  font-size: 24px;
+  font-weight: 650;
+  color: #111827;
+}
+
+.dashboard-welcome p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+
+/* ==========================================
+   TABLET
+========================================== */
+
+@media (max-width: 1100px) {
+  .dashboard-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+
+/* ==========================================
+   MOBILE
+========================================== */
+
+@media (max-width: 700px) {
+  .dashboard {
+    padding: 24px 18px;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dashboard-header h1 {
+    font-size: 28px;
+  }
+
+  .dashboard-cards {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .dashboard-card {
+    min-height: auto;
+  }
+
+  .dashboard-welcome {
+    padding: 24px;
+  }
+}
