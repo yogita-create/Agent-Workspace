@@ -61,6 +61,9 @@ IMPORTANT RULES:
 
 13. Do not propose actions for projects or tasks that do not exist.
 
+14. Answer the questions of the user ragarding to the all history based.
+15. You need to memorise the past task or project if user ask for it.
+
 AVAILABLE PROJECTS:
 ${JSON.stringify(projectContext, null, 2)}
 
