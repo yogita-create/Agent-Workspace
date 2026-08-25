@@ -32,8 +32,8 @@ function Sidebar({
       icon: Bot,
     },
     {
-      id: "calender",
-      label: "Calender",
+      id: "calendar",
+      label: "Calendar",
       icon: CalendarDays,
     },
   ];

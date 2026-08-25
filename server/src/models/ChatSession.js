@@ -5,6 +5,8 @@ const chatSessionSchema = new mongoose.Schema(
     title: {
       type: String,
       default: "New Chat",
+      trim: true,
+      maxlength: 60,
     },
 
     // We will use this later when authentication is added
