@@ -13,6 +13,8 @@ import Projects from "./components/Projects";
 import ChatPanel from "./components/ChatPanel";
 import Tasks from "./components/Tasks";
 import Calendar from "./components/Calendar";
+import Alerts from "./components/alerts";
+
 
 import "./App.css";
 
@@ -39,10 +41,6 @@ function App() {
 
   const [refreshChats, setRefreshChats] =
     useState(0);
-
-  const [loadingSession, setLoadingSession] =
-    useState(true);
-
 
   // ==========================================
   // UPDATE ACTIVE PAGE BASED ON URL
@@ -99,8 +97,8 @@ function App() {
         navigate("/alerts");
         break;
 
-      case "calender":
-        navigate("/calender");
+      case "calendar":
+        navigate("/calendar");
         break;
 
       default:
@@ -197,8 +195,6 @@ function App() {
 
     const loadInitialSession = async () => {
       try {
-        setLoadingSession(true);
-
         const response = await fetch(
           `${API_URL}/api/chat/sessions`
         );
@@ -246,9 +242,8 @@ function App() {
           );
         }
       } finally {
-        if (!ignore) {
-          setLoadingSession(false);
-        }
+        // ChatPanel manages its own loading state and remains available
+        // even if this optional initial-session lookup is delayed.
       }
     };
 
@@ -295,7 +290,6 @@ function App() {
         }
       />
 
-
       {/* ======================================
           MAIN CONTENT
       ====================================== */}
@@ -319,6 +313,8 @@ function App() {
             }
           />
 
+         
+
 
           {/* ==================================
               PROJECT LIST
@@ -331,7 +327,6 @@ function App() {
             }
           />
 
-
           {/* ==================================
               PROJECT DETAILS
           ================================== */}
@@ -343,7 +338,6 @@ function App() {
             }
           />
 
-
           {/* ==================================
               AI AGENT
           ================================== */}
@@ -351,43 +345,11 @@ function App() {
           <Route
             path="/ai-agent"
             element={
-              loadingSession ? (
-
-                <div className="page-loading">
-                  Loading AI Agent...
-                </div>
-
-              ) : !sessionId ? (
-
-                <div className="page-loading">
-
-                  <p>
-                    No active chat session.
-                  </p>
-
-                  <button
-                    onClick={
-                      createNewSession
-                    }
-                  >
-                    Start New Chat
-                  </button>
-
-                </div>
-
-              ) : (
-
-                <ChatPanel
-                  key={chatResetKey}
-                  sessionId={
-                    sessionId
-                  }
-                />
-
-              )
+              <ChatPanel
+                key={chatResetKey}
+              />
             }
           />
-
 
           {/* ==================================
               TASKS
@@ -398,29 +360,13 @@ function App() {
             element={<Tasks />}
           />
 
-
           {/* ==================================
               ALERTS
           ================================== */}
-
           <Route
             path="/alerts"
-            element={
-              <div className="page-placeholder">
-
-                <h1>
-                  Notifications
-                </h1>
-
-                <p>
-                  Your workspace notifications
-                  will appear here.
-                </p>
-
-              </div>
-            }
+            element={<Alerts/>}
           />
-
 
           {/* ==================================
               SETTINGS
@@ -431,7 +377,6 @@ function App() {
             element={<Calendar />}
           />
               
-
         </Routes>
 
       </main>

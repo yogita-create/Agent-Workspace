@@ -1,12 +1,13 @@
 import express from "express";
 import ChatSession from "../models/ChatSession.js";
 import ChatMessage from "../models/ChatMessage.js";
+import PendingAction from "../models/PendingAction.js";
 
 const router = express.Router();
 
 
 // ==========================================
-// 1. CREATE NEW CHAT SESSION
+// CREATE NEW CHAT SESSION
 // POST /api/chat/sessions
 // ==========================================
 
@@ -21,7 +22,7 @@ router.post("/", async (req, res) => {
       session,
     });
   } catch (error) {
-    console.error("Create session error:", error.message);
+    console.error("Create session error:", error);
 
     res.status(500).json({
       success: false,
@@ -32,7 +33,7 @@ router.post("/", async (req, res) => {
 
 
 // ==========================================
-// 2. GET ALL CHAT SESSIONS
+// GET ALL CHAT SESSIONS
 // GET /api/chat/sessions
 // ==========================================
 
@@ -42,32 +43,51 @@ router.get("/", async (req, res) => {
       .sort({ lastMessageAt: -1 })
       .select("_id title lastMessageAt createdAt");
 
-    res.status(200).json({
+    res.json({
       success: true,
       sessions,
     });
+
   } catch (error) {
-    console.error("Get sessions error:", error.message);
+
+    console.error(error);
 
     res.status(500).json({
       success: false,
       message: "Failed to fetch chat sessions",
     });
+
   }
 });
 
 
 // ==========================================
-// 3. GET CHAT HISTORY
-// GET /api/chat/sessions/:sessionId/messages
+// RENAME CHAT SESSION
+// PUT /api/chat/sessions/:sessionId
 // ==========================================
 
-router.get("/:sessionId/messages", async (req, res) => {
+router.put("/:sessionId", async (req, res) => {
   try {
-    const { sessionId } = req.params;
 
-    // Check if session exists
-    const session = await ChatSession.findById(sessionId);
+    const { title } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Title is required",
+      });
+    }
+
+    const session = await ChatSession.findByIdAndUpdate(
+      req.params.sessionId,
+      {
+        title: title.trim(),
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!session) {
       return res.status(404).json({
@@ -76,27 +96,131 @@ router.get("/:sessionId/messages", async (req, res) => {
       });
     }
 
-    // Get all messages of this session
+    res.json({
+      success: true,
+      session,
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Rename failed",
+    });
+
+  }
+});
+
+
+// ==========================================
+// DELETE CHAT SESSION
+// DELETE /api/chat/sessions/:sessionId
+// ==========================================
+
+router.delete("/:sessionId", async (req, res) => {
+  try {
+
+    const { sessionId } = req.params;
+
+    // Get all chat messages
+    const messages = await ChatMessage.find({
+      sessionId,
+    });
+
+    // Collect Pending Action IDs
+    const pendingActionIds = messages.flatMap(
+      (message) => message.proposedActions || []
+    );
+
+    // Delete Pending Actions
+    if (pendingActionIds.length > 0) {
+      await PendingAction.deleteMany({
+        _id: {
+          $in: pendingActionIds,
+        },
+      });
+    }
+
+    // Delete Messages
+    await ChatMessage.deleteMany({
+      sessionId,
+    });
+
+    // Delete Session
+    const deletedSession =
+      await ChatSession.findByIdAndDelete(sessionId);
+
+    if (!deletedSession) {
+      return res.status(404).json({
+        success: false,
+        message: "Chat session not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Chat deleted successfully",
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Delete failed",
+    });
+
+  }
+});
+
+
+// ==========================================
+// GET CHAT HISTORY
+// GET /api/chat/sessions/:sessionId/messages
+// ==========================================
+
+router.get("/:sessionId/messages", async (req, res) => {
+  try {
+
+    const { sessionId } = req.params;
+
+    const session =
+      await ChatSession.findById(sessionId);
+
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: "Chat session not found",
+      });
+    }
+
     const messages = await ChatMessage.find({
       sessionId,
     })
-      .sort({ createdAt: 1 })
+      .sort({
+        createdAt: 1,
+      })
       .populate("proposedActions");
 
-    res.status(200).json({
+    res.json({
       success: true,
       session,
       messages,
     });
+
   } catch (error) {
-    console.error("Get chat history error:", error.message);
+
+    console.error(error);
 
     res.status(500).json({
       success: false,
       message: "Failed to fetch chat history",
     });
+
   }
 });
-
 
 export default router;
