@@ -1,0 +1,207 @@
+/* ==========================================
+   AUTHENTICATION PAGES (LOGIN & REGISTER)
+========================================== */
+
+.auth-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary, #f8fafc);
+  padding: 24px;
+  box-sizing: border-box;
+  color: var(--text-primary, #0f172a);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg, 0 20px 40px rgba(0, 0, 0, 0.08));
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-sizing: border-box;
+}
+
+.auth-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-logo-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--accent-primary, #0f172a);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.auth-header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+  letter-spacing: -0.5px;
+}
+
+.auth-header p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text-muted, #64748b);
+}
+
+/* Form Styles */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #334155);
+}
+
+.auth-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-input-wrap input {
+  width: 100%;
+  padding: 11px 14px 11px 38px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-primary, #0f172a);
+  background: var(--bg-input, #ffffff);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.auth-input-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted, #94a3b8);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.auth-input-wrap input:focus {
+  border-color: var(--accent-blue, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.auth-error-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 11px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-submit-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent-primary, #0f172a);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.auth-submit-btn:hover {
+  background: var(--accent-primary-hover, #1e293b);
+  transform: translateY(-1px);
+}
+
+.auth-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Footer Link */
+.auth-footer {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+  border-top: 1px solid var(--border-color, #f1f5f9);
+  padding-top: 16px;
+}
+
+.auth-footer a {
+  color: var(--accent-blue, #3b82f6);
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.auth-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Dark Mode Overrides */
+[data-theme="dark"] .auth-page {
+  background: var(--bg-primary, #0b0f19);
+}
+
+[data-theme="dark"] .auth-card {
+  background: var(--bg-card, #111827);
+  border-color: var(--border-color, #374151);
+}
+
+[data-theme="dark"] .auth-input-wrap input {
+  background: var(--bg-input, #1f2937);
+  border-color: var(--border-color, #374151);
+  color: var(--text-primary, #f8fafc);
+}
+
+[data-theme="dark"] .auth-submit-btn {
+  background: var(--accent-primary, #3b82f6);
+}
+
+[data-theme="dark"] .auth-submit-btn:hover {
+  background: var(--accent-primary-hover, #2563eb);
+}
+
+[data-theme="dark"] .auth-error-banner {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
