@@ -1,0 +1,241 @@
+/* ==========================================
+   GLOBAL APP STYLES & LAYOUT
+========================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  background-color: var(--bg-primary, #f8fafc);
+  color: var(--text-primary, #0f172a);
+  transition: background-color 0.2s ease, color 0.2s ease;
+  overflow: hidden;
+}
+
+.app {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg-primary, #f8fafc);
+}
+
+/* ==========================================
+   MAIN CONTENT WRAPPER
+========================================== */
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--bg-primary, #f8fafc);
+  position: relative;
+}
+
+.page-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-muted, #64748b);
+  background-color: var(--bg-primary, #f8fafc);
+}
+
+/* ==========================================
+   GLOBAL DARK MODE COMPREHENSIVE ADAPTATIONS
+========================================== */
+
+[data-theme="dark"] .dashboard,
+[data-theme="dark"] .projects-page,
+[data-theme="dark"] .project-details-page,
+[data-theme="dark"] .tasks-page,
+[data-theme="dark"] .alerts-page,
+[data-theme="dark"] .settings-page,
+[data-theme="dark"] .ai-agent-page,
+[data-theme="dark"] .chat-panel {
+  background-color: var(--bg-primary, #0b0f19) !important;
+  color: var(--text-primary, #f8fafc) !important;
+}
+
+/* Headers & Titles */
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6 {
+  color: var(--text-primary, #f8fafc) !important;
+}
+
+/* Cards & Containers in Dark Mode */
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .quick-actions-card,
+[data-theme="dark"] .recent-activity-card,
+[data-theme="dark"] .agent-summary-card,
+[data-theme="dark"] .project-card,
+[data-theme="dark"] .jira-task-card,
+[data-theme="dark"] .alert-stat-card,
+[data-theme="dark"] .alerts-main-card,
+[data-theme="dark"] .project-info-card,
+[data-theme="dark"] .project-members-section,
+[data-theme="dark"] .project-workspace-section,
+[data-theme="dark"] .settings-section,
+[data-theme="dark"] .theme-card,
+[data-theme="dark"] .edit-project-modal,
+[data-theme="dark"] .task-modal-content,
+[data-theme="dark"] .share-task-modal,
+[data-theme="dark"] .project-modal,
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] .agent-chat-sidebar,
+[data-theme="dark"] .chat-header,
+[data-theme="dark"] .chat-input-container {
+  background-color: var(--bg-card, #111827) !important;
+  border-color: var(--border-color, #374151) !important;
+}
+
+/* Sub-containers & columns in Dark Mode */
+[data-theme="dark"] .kanban-column,
+[data-theme="dark"] .project-kanban-col,
+[data-theme="dark"] .project-member-card,
+[data-theme="dark"] .edit-member-item,
+[data-theme="dark"] .tasks-toolbar,
+[data-theme="dark"] .stat-chip,
+[data-theme="dark"] .share-target-preview,
+[data-theme="dark"] .member-check-card,
+[data-theme="dark"] .toggle-item {
+  background-color: var(--bg-secondary, #161f30) !important;
+  border-color: var(--border-color, #374151) !important;
+}
+
+/* Inputs, Selects, and Textareas */
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: var(--bg-input, #1f2937) !important;
+  border-color: var(--border-color, #374151) !important;
+  color: var(--text-primary, #f8fafc) !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--text-muted, #64748b) !important;
+}
+
+/* Buttons & Badges in Dark Mode */
+[data-theme="dark"] .task-cancel-btn,
+[data-theme="dark"] .edit-cancel-btn,
+[data-theme="dark"] .share-cancel-btn,
+[data-theme="dark"] .view-project-btn {
+  background-color: var(--bg-card, #111827) !important;
+  border-color: var(--border-color, #374151) !important;
+  color: var(--text-secondary, #cbd5e1) !important;
+}
+
+[data-theme="dark"] .task-cancel-btn:hover,
+[data-theme="dark"] .edit-cancel-btn:hover,
+[data-theme="dark"] .share-cancel-btn:hover,
+[data-theme="dark"] .view-project-btn:hover {
+  background-color: var(--bg-tertiary, #1f2937) !important;
+  color: var(--text-primary, #f8fafc) !important;
+}
+
+[data-theme="dark"] .task-submit-btn,
+[data-theme="dark"] .edit-save-btn,
+[data-theme="dark"] .share-submit-btn,
+[data-theme="dark"] .create-project-btn,
+[data-theme="dark"] .create-task-primary-btn,
+[data-theme="dark"] .edit-project-btn,
+[data-theme="dark"] .project-add-task-btn,
+[data-theme="dark"] .edit-add-member-btn,
+[data-theme="dark"] .new-chat-button {
+  background-color: var(--accent-primary, #3b82f6) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .task-submit-btn:hover,
+[data-theme="dark"] .edit-save-btn:hover,
+[data-theme="dark"] .share-submit-btn:hover,
+[data-theme="dark"] .create-project-btn:hover,
+[data-theme="dark"] .create-task-primary-btn:hover,
+[data-theme="dark"] .edit-project-btn:hover,
+[data-theme="dark"] .project-add-task-btn:hover,
+[data-theme="dark"] .edit-add-member-btn:hover,
+[data-theme="dark"] .new-chat-button:hover {
+  background-color: var(--accent-primary-hover, #2563eb) !important;
+}
+
+/* Modals & Overlays */
+[data-theme="dark"] .modal-overlay,
+[data-theme="dark"] .edit-modal-overlay,
+[data-theme="dark"] .task-modal-overlay,
+[data-theme="dark"] .share-modal-overlay {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+}
+
+/* Messages & Markdown in Dark Mode */
+[data-theme="dark"] .user-message-text {
+  background: var(--accent-primary, #3b82f6) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .assistant-message .message-content {
+  background: var(--bg-card, #111827) !important;
+  border-color: var(--border-color, #374151) !important;
+  color: var(--text-primary, #f8fafc) !important;
+}
+
+[data-theme="dark"] .markdown-content strong {
+  color: var(--text-primary, #f8fafc) !important;
+}
+
+[data-theme="dark"] .markdown-content code {
+  background: var(--bg-tertiary, #1f2937) !important;
+  color: #93c5fd !important;
+  border-color: var(--border-color, #374151) !important;
+}
+
+[data-theme="dark"] .suggestion-chip {
+  background: var(--bg-secondary, #161f30) !important;
+  border-color: var(--border-color, #374151) !important;
+  color: var(--text-secondary, #cbd5e1) !important;
+}
+
+[data-theme="dark"] .suggestion-chip:hover {
+  background: var(--bg-tertiary, #1f2937) !important;
+  color: var(--text-primary, #f8fafc) !important;
+  border-color: var(--accent-blue, #60a5fa) !important;
+}
+
+/* ==========================================
+   SCROLLBAR (GLOBAL)
+========================================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color, #cbd5e1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted, #94a3b8);
+}

@@ -1,0 +1,299 @@
+/* ==========================================
+   SHARE TASK MODAL STYLES
+========================================== */
+
+.share-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  overflow-y: auto;
+}
+
+.share-task-modal {
+  width: 100%;
+  max-width: 580px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg, 0 25px 60px rgba(0, 0, 0, 0.22));
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalFadeIn 0.2s ease-out;
+  color: var(--text-primary, #0f172a);
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Modal Header */
+.share-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border-color, #f1f5f9);
+  padding-bottom: 16px;
+}
+
+.share-modal-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.share-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text-primary, #0f172a);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-task-context {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.share-task-context strong {
+  color: var(--text-primary, #1e293b);
+}
+
+.share-modal-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: var(--bg-tertiary, #f1f5f9);
+  color: var(--text-secondary, #475569);
+  border-radius: 8px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.share-modal-close:hover {
+  background: var(--border-color, #e2e8f0);
+  color: var(--text-primary, #0f172a);
+}
+
+/* Task Summary Card in Modal */
+.share-target-preview {
+  background: var(--bg-primary, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.share-target-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.share-target-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+  margin: 0;
+}
+
+/* Form Groups */
+.share-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.share-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.share-form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #334155);
+}
+
+.share-input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.share-form input,
+.share-form select,
+.share-form textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-primary, #0f172a);
+  outline: none;
+  background: var(--bg-input, #ffffff);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.share-form input:focus,
+.share-form select:focus,
+.share-form textarea:focus {
+  border-color: var(--accent-blue, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.share-form textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.role-desc-text {
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+  font-style: italic;
+}
+
+.share-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid var(--border-color, #f1f5f9);
+  padding-top: 16px;
+}
+
+.share-cancel-btn {
+  padding: 10px 18px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  background: var(--bg-card, #ffffff);
+  color: var(--text-secondary, #475569);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.share-cancel-btn:hover {
+  background: var(--bg-tertiary, #f8fafc);
+  color: var(--text-primary, #0f172a);
+}
+
+.share-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  border: none;
+  background: var(--accent-primary, #10b981);
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.share-submit-btn:hover {
+  background: #059669;
+}
+
+.share-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Already Shared Collaborators List */
+.current-shares-list {
+  border-top: 1px solid var(--border-color, #f1f5f9);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.current-shares-list h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary, #334155);
+}
+
+.share-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-primary, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+}
+
+.share-member-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.share-member-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+  margin: 0;
+}
+
+.share-member-email {
+  font-size: 11.5px;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+}
+
+.share-member-role-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-blue, #4f46e5);
+  background: var(--accent-blue-bg, #eef2ff);
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+@media (max-width: 600px) {
+  .share-input-row {
+    grid-template-columns: 1fr;
+  }
+}

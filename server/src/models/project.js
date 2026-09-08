@@ -1,9 +1,47 @@
 import mongoose from "mongoose";
 
-const projectSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  description: { type: String, default: "" },
-  status: { type: String, enum: ["active", "paused", "done"], default: "active" }
-}, { timestamps: true });
+const projectSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-export default mongoose.model("Project", projectSchema);
+    description: {
+      type: String,
+      default: "",
+    },
+
+    techStack: {
+      type: String,
+      default: "",
+    },
+
+    goal: {
+      type: String,
+      default: "",
+    },
+
+    status: {
+      type: String,
+      enum: ["Active", "Completed", "On Hold"],
+      default: "Active",
+    },
+
+    members: [
+      {
+        name: String,
+        email: String,
+        role: String,
+      },
+    ],
+  },
+  {
+    timestamps: true,
+  }
+);
+
+const Project = mongoose.model("Project", projectSchema);
+
+export default Project;
