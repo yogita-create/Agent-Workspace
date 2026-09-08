@@ -6,6 +6,8 @@ import {
   useLocation,
 } from "react-router-dom";
 
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import ProjectDetails from "./components/ProjectDetails";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
@@ -190,6 +192,14 @@ function App() {
   useEffect(() => {
     let ignore = false;
 
+    const isAuthPage =
+      location.pathname === "/login" || location.pathname === "/register";
+
+    if (isAuthPage) {
+      setLoadingSession(false);
+      return;
+    }
+
     const loadInitialSession = async () => {
       try {
         setLoadingSession(true);
@@ -231,21 +241,26 @@ function App() {
   // MAIN UI
   // ==========================================
 
+  const isAuthPage =
+    location.pathname === "/login" || location.pathname === "/register";
+
   return (
     <div className="app">
       {/* ======================================
           LEFT SIDEBAR
       ====================================== */}
-      <Sidebar
-        activePage={activePage}
-        onNavigate={handleNavigate}
-        onNewChat={createNewSession}
-        onSelectSession={selectSession}
-        activeSessionId={sessionId}
-        refreshChats={refreshChats}
-        currentTheme={theme}
-        onThemeChange={handleThemeChange}
-      />
+      {!isAuthPage && (
+        <Sidebar
+          activePage={activePage}
+          onNavigate={handleNavigate}
+          onNewChat={createNewSession}
+          onSelectSession={selectSession}
+          activeSessionId={sessionId}
+          refreshChats={refreshChats}
+          currentTheme={theme}
+          onThemeChange={handleThemeChange}
+        />
+      )}
 
       {/* ======================================
           MAIN CONTENT
@@ -293,8 +308,14 @@ function App() {
                 currentTheme={theme}
                 onThemeChange={handleThemeChange}
               />
+
             }
           />
+          {/* LOGIN */}
+          <Route path="/login" element={<Login />} />
+
+          {/* REGISTER */}
+          <Route path="/register" element={<Register />} />
         </Routes>
       </main>
     </div>
