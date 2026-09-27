@@ -1,12 +1,35 @@
 import express from "express";
+import jwt from "jsonwebtoken";
 import Project from "../models/project.js";
+import Membership from "../models/Membership.js";
 
 const router = express.Router();
+
+// Optional token helper to extract user if present without failing unauthenticated requests
+const optionalToken = (req, res, next) => {
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    req.user = null;
+    return next();
+  }
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_ACCESS_SECRET || "agent_workspace_jwt_access_secret_key_2026"
+    );
+    req.user = { id: decoded.id, email: decoded.email };
+  } catch {
+    req.user = null;
+  }
+  next();
+};
 
 // CREATE PROJECT
 // POST /api/projects
 
-router.post("/", async (req, res) => {
+router.post("/", optionalToken, async (req, res) => {
   try {
     const {
       name,
@@ -14,6 +37,7 @@ router.post("/", async (req, res) => {
       techStack,
       goal,
       members,
+      workspaceId,
     } = req.body;
 
     if (!name || !name.trim()) {
@@ -23,12 +47,21 @@ router.post("/", async (req, res) => {
       });
     }
 
+    let assignedWorkspaceId = workspaceId || null;
+    if (!assignedWorkspaceId && req.user?.id) {
+      const userMembership = await Membership.findOne({ userId: req.user.id });
+      if (userMembership) {
+        assignedWorkspaceId = userMembership.workspaceId;
+      }
+    }
+
     const project = await Project.create({
       name: name.trim(),
       description: description || "",
       techStack: techStack || "",
       goal: goal || "",
       members: members || [],
+      workspaceId: assignedWorkspaceId,
       status: "Active",
     });
 
@@ -52,10 +85,26 @@ router.post("/", async (req, res) => {
 // GET ALL PROJECTS
 // GET /api/projects
 
-router.get("/", async (req, res) => {
+router.get("/", optionalToken, async (req, res) => {
   try {
-    const projects = await Project.find()
-      .sort({ createdAt: -1 });
+    let query = {};
+
+    if (req.user?.id) {
+      // 1. Find all workspaces the logged-in user belongs to
+      const memberships = await Membership.find({ userId: req.user.id });
+      const workspaceIds = memberships.map((m) => m.workspaceId);
+
+      // Return projects in user's member workspaces or unassigned legacy projects
+      query = {
+        $or: [
+          { workspaceId: { $in: workspaceIds } },
+          { workspaceId: { $exists: false } },
+          { workspaceId: null },
+        ],
+      };
+    }
+
+    const projects = await Project.find(query).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,

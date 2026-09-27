@@ -1,14 +1,18 @@
 import "./Sidebar.css";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import {
   LayoutDashboard,
   FolderOpenDot,
   ListTodo,
   Bell,
   Bot,
+  CalendarDays,
   Settings,
   Brain,
   Sun,
   Moon,
+  LogOut,
 } from "lucide-react";
 
 function Sidebar({
@@ -17,6 +21,9 @@ function Sidebar({
   currentTheme,
   onThemeChange,
 }) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
   const menuItems = [
     {
       id: "dashboard",
@@ -45,6 +52,11 @@ function Sidebar({
       badge: "AI",
     },
     {
+      id: "calendar",
+      label: "Calendar",
+      icon: CalendarDays,
+    },
+    {
       id: "settings",
       label: "Settings",
       icon: Settings,
@@ -54,6 +66,16 @@ function Sidebar({
   const toggleTheme = () => {
     if (onThemeChange) {
       onThemeChange(currentTheme === "dark" ? "light" : "dark");
+    }
+  };
+
+  const handleLogout = async (e) => {
+    e.stopPropagation();
+    try {
+      await logout();
+      navigate("/login");
+    } catch (err) {
+      console.error("Logout error:", err);
     }
   };
 
@@ -69,7 +91,7 @@ function Sidebar({
           </div>
           <div>
             <h2>Agent Workspace</h2>
-            <p>Agile & Project Hub</p>
+            <p>Project Hub</p>
           </div>
         </div>
 
@@ -127,15 +149,28 @@ function Sidebar({
       </div>
 
       {/* =====================================
-          USER SECTION
+          USER SECTION & WORKING LOGOUT BUTTON
       ===================================== */}
-      <div className="sidebar-user" onClick={() => onNavigate("settings")}>
-        <div className="user-avatar">Y</div>
+      <div className="sidebar-user-container">
+        <div className="sidebar-user" onClick={() => onNavigate("settings")} title="Open Settings">
+          <div className="user-avatar">
+            {user?.name ? user.name.charAt(0).toUpperCase() : "Y"}
+          </div>
 
-        <div className="user-details">
-          <strong>Yogita</strong>
-          <small>Lead Developer</small>
+          <div className="user-details">
+            <strong>{user?.name || "Yogita"}</strong>
+            <small>{user?.email || "Lead Developer"}</small>
+          </div>
         </div>
+
+        <button
+          type="button"
+          className="sidebar-logout-btn"
+          onClick={handleLogout}
+          title="Sign out of account"
+        >
+          <LogOut size={16} />
+        </button>
       </div>
     </aside>
   );

@@ -16,6 +16,7 @@ import Tasks from "./components/Tasks";
 import Alerts from "./components/Alerts";
 import ChatPanel from "./components/ChatPanel";
 import Settings from "./components/Settings";
+import Calendar from "./components/Calendar";
 
 import "./App.css";
 
@@ -100,6 +101,8 @@ function App() {
       setActivePage("tasks");
     } else if (path === "/alerts") {
       setActivePage("alerts");
+    } else if (path === "/calendar") {
+      setActivePage("calendar");
     } else if (path === "/settings") {
       setActivePage("settings");
     } else {
@@ -133,6 +136,10 @@ function App() {
 
       case "alerts":
         navigate("/alerts");
+        break;
+
+      case "calendar":
+        navigate("/calendar");
         break;
 
       case "settings":
@@ -299,6 +306,9 @@ function App() {
 
           {/* ALERTS */}
           <Route path="/alerts" element={<Alerts onNavigate={handleNavigate} />} />
+
+          {/* CALENDAR */}
+          <Route path="/calendar" element={<Calendar onNavigate={handleNavigate} />} />
 
           {/* SETTINGS */}
           <Route

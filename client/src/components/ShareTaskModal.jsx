@@ -7,6 +7,7 @@ import {
   Clock,
   MessageSquare,
   Sparkles,
+  UserCheck,
 } from "lucide-react";
 import "./ShareTaskModal.css";
 
@@ -41,6 +42,9 @@ function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] })
   const handleSelectMember = (member) => {
     setRecipientName(member.name || "");
     setRecipientEmail(member.email || "");
+    if (member.role) {
+      setRole(member.role);
+    }
     setError("");
   };
 
@@ -87,7 +91,7 @@ function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] })
       setRecipientEmail("");
       setNote("");
 
-      // Auto close after 1.2s or keep open
+      // Auto close after 1.2s
       setTimeout(() => {
         onClose();
       }, 1200);
@@ -115,7 +119,7 @@ function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] })
         <div className="share-modal-header">
           <div className="share-modal-title-wrap">
             <h2>
-              <Share2 size={20} color="#16a34a" />
+              <Share2 size={20} className="share-header-icon" />
               Share Task with Collaborators
             </h2>
             <p className="share-task-context">
@@ -128,6 +132,7 @@ function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] })
             className="share-modal-close"
             onClick={onClose}
             disabled={loading}
+            title="Close"
           >
             ×
           </button>
@@ -137,34 +142,40 @@ function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] })
         {error && <div className="share-error-msg">{error}</div>}
         {successMsg && (
           <div className="share-success-msg">
-            <CheckCircle size={15} style={{ display: "inline", marginRight: 6 }} />
-            {successMsg}
+            <CheckCircle size={16} />
+            <span>{successMsg}</span>
           </div>
         )}
 
         {/* QUICK MEMBER SELECTION CHIPS */}
         {collaborators.length > 0 && (
           <div className="share-form-group">
-            <label>
-              <Users size={14} style={{ display: "inline", marginRight: 4 }} />
-              Quick Select Team Member:
+            <label className="quick-select-label">
+              <Users size={14} />
+              <span>Quick Select Team Member:</span>
             </label>
             <div className="quick-member-select">
-              {collaborators.map((c, i) => (
-                <button
-                  key={`${c.email}-${i}`}
-                  type="button"
-                  className={`quick-member-chip ${
-                    recipientEmail.toLowerCase() === c.email.toLowerCase()
-                      ? "selected"
-                      : ""
-                  }`}
-                  onClick={() => handleSelectMember(c)}
-                >
-                  <span>{c.name}</span>
-                  <small style={{ opacity: 0.8 }}>({c.role || "Member"})</small>
-                </button>
-              ))}
+              {collaborators.map((c, i) => {
+                const isSelected =
+                  recipientEmail.toLowerCase() === (c.email || "").toLowerCase();
+                return (
+                  <button
+                    key={`${c.email}-${i}`}
+                    type="button"
+                    className={`quick-member-chip ${isSelected ? "selected" : ""}`}
+                    onClick={() => handleSelectMember(c)}
+                  >
+                    <span className="quick-chip-avatar">
+                      {c.name ? c.name.charAt(0).toUpperCase() : "U"}
+                    </span>
+                    <span className="quick-chip-name">{c.name}</span>
+                    {c.role && (
+                      <span className="quick-chip-role">{c.role}</span>
+                    )}
+                    {isSelected && <UserCheck size={14} className="quick-chip-check" />}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -206,15 +217,15 @@ function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] })
           </div>
 
           <div className="share-form-group">
-            <label>
-              <MessageSquare size={14} style={{ display: "inline", marginRight: 4 }} />
-              Collaboration Note / Instructions (Optional)
+            <label className="note-label">
+              <MessageSquare size={14} />
+              <span>Collaboration Note / Instructions (Optional)</span>
             </label>
             <textarea
               placeholder="e.g. Please review the authentication endpoints and test edge cases by Friday."
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              rows="2"
+              rows="3"
             />
           </div>
 
@@ -234,7 +245,7 @@ function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] })
               disabled={loading || !recipientName.trim() || !recipientEmail.trim()}
             >
               <UserPlus size={16} />
-              {loading ? "Sharing..." : "Share Task"}
+              <span>{loading ? "Sharing..." : "Share Task"}</span>
             </button>
           </div>
         </form>

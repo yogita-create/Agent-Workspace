@@ -219,16 +219,26 @@
 }
 
 /* ==========================================
-   USER SECTION
+   USER SECTION & LOGOUT
 ========================================== */
+
+.sidebar-user-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 4px 2px;
+  border-top: 1px solid var(--border-color, #e2e8f0);
+  flex-shrink: 0;
+  gap: 6px;
+}
 
 .sidebar-user {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 6px 4px;
-  border-top: 1px solid var(--border-color, #e2e8f0);
-  flex-shrink: 0;
+  gap: 10px;
+  padding: 4px 6px;
+  flex: 1;
+  min-width: 0;
   cursor: pointer;
   border-radius: 8px;
   transition: background 0.15s ease;
@@ -239,17 +249,22 @@
 }
 
 .user-avatar {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: #3b82f6;
+  background: var(--accent-primary, #0f172a);
   color: #ffffff;
   border-radius: 50%;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
+}
+
+.user-details {
+  min-width: 0;
+  flex: 1;
 }
 
 .user-details strong {
@@ -257,6 +272,9 @@
   color: var(--text-primary, #0f172a);
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-details small {
@@ -264,6 +282,41 @@
   margin-top: 1px;
   color: var(--text-muted, #64748b);
   font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-logout-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-primary, #f8fafc);
+  color: var(--text-muted, #64748b);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-logout-btn:hover {
+  background: #fee2e2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+[data-theme="dark"] .sidebar-logout-btn {
+  background: var(--bg-secondary, #161f30);
+  border-color: var(--border-color, #374151);
+}
+
+[data-theme="dark"] .sidebar-logout-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
 }
 
 /* ==========================================

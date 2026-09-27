@@ -29,6 +29,11 @@ const projectSchema = new mongoose.Schema(
       default: "Active",
     },
 
+    workspaceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Workspace",
+    },
+
     members: [
       {
         name: String,
