@@ -1,8 +1,10 @@
 import express from "express";
+import crypto from "crypto";
 import mongoose from "mongoose";
 import Organization from "../models/Organization.js";
 import Membership from "../models/Membership.js";
 import User from "../models/User.js";
+import Invite from "../models/Invite.js";
 import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
@@ -337,6 +339,129 @@ router.delete("/:id/members/:userId", async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to remove member from organization",
+      error: error.message,
+    });
+  }
+});
+
+// ==========================================
+// 6. POST /api/organizations/:id/invite
+// Invite a member to the organization (Admin or Manager only)
+// ==========================================
+router.post("/:id/invite", async (req, res) => {
+  try {
+    const organizationId = req.params.id;
+    const { email, role } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(organizationId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid organization ID format",
+      });
+    }
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const assignedRole = role || "employee";
+    const allowedRoles = ["admin", "manager", "employee"];
+    if (!allowedRoles.includes(assignedRole)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid role. Allowed roles are: ${allowedRoles.join(", ")}`,
+      });
+    }
+
+    // Check if organization exists
+    const organization = await Organization.findById(organizationId);
+    if (!organization) {
+      return res.status(404).json({
+        success: false,
+        message: "Organization not found",
+      });
+    }
+
+    // Check if requester is admin or manager
+    const requesterMembership = await Membership.findOne({
+      organizationId,
+      userId: req.user.id,
+    });
+
+    if (
+      !requesterMembership ||
+      (requesterMembership.role !== "admin" && requesterMembership.role !== "manager")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Only organization admins and managers can invite members",
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if a User with this email already exists
+    const existingUser = await User.findOne({ email: normalizedEmail });
+
+    if (existingUser) {
+      // Check if user is already a member of this organization
+      const existingMembership = await Membership.findOne({
+        organizationId,
+        userId: existingUser._id,
+      });
+
+      if (existingMembership) {
+        return res.status(400).json({
+          success: false,
+          message: "User is already a member of this organization",
+        });
+      }
+
+      // Directly create Membership
+      const membership = await Membership.create({
+        userId: existingUser._id,
+        organizationId,
+        role: assignedRole,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "User added directly",
+        membership,
+      });
+    }
+
+    // User does not exist -> create Invite record with random token
+    const token = crypto.randomBytes(32).toString("hex");
+
+    const invite = await Invite.create({
+      email: normalizedEmail,
+      organizationId,
+      role: assignedRole,
+      token,
+      expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days
+    });
+
+    const inviteLink = `http://localhost:5173/accept-invite/${token}`;
+
+    return res.status(201).json({
+      success: true,
+      inviteLink,
+      invite: {
+        _id: invite._id,
+        email: invite.email,
+        role: invite.role,
+        expiresAt: invite.expiresAt,
+      },
+    });
+  } catch (error) {
+    console.error("Invite member error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to process invitation",
       error: error.message,
     });
   }

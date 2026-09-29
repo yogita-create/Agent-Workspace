@@ -11,6 +11,7 @@ import projectRoutes from "./routes/projectRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
 import authRoutes from "./routes/auth.js";
 import organizationRoutes from "./routes/organization.js";
+import inviteRoutes from "./routes/invite.js";
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/organizations", organizationRoutes);
+app.use("/api/invites", inviteRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/chat", chatRoutes);
