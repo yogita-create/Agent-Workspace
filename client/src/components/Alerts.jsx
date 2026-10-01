@@ -11,9 +11,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { getTaskAlerts } from "../utils/alertUtils";
+import axiosInstance from "../api/axiosInstance";
 import "./Alerts.css";
-
-const API_URL = "http://localhost:5000";
 
 function Alerts({ onNavigate }) {
   const [tasks, setTasks] = useState([]);
@@ -23,8 +22,8 @@ function Alerts({ onNavigate }) {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_URL}/api/tasks`);
-      const data = await res.json();
+      const res = await axiosInstance.get("/api/tasks");
+      const data = res.data;
       if (data.success) {
         setTasks(data.tasks || []);
       }
@@ -44,11 +43,7 @@ function Alerts({ onNavigate }) {
       setTasks((prev) =>
         prev.map((t) => (t._id === taskId ? { ...t, status: "done" } : t))
       );
-      await fetch(`${API_URL}/api/tasks/${taskId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "done" }),
-      });
+      await axiosInstance.put(`/api/tasks/${taskId}`, { status: "done" });
     } catch (err) {
       console.error("Mark task as done error:", err);
       fetchTasks();

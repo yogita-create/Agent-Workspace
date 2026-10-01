@@ -62,7 +62,7 @@ router.post("/", async (req, res) => {
 // ==========================================
 router.get("/me", async (req, res) => {
   try {
-    const memberships = await Membership.find({ userId: req.user.id })
+    let memberships = await Membership.find({ userId: req.user.id })
       .populate({
         path: "organizationId",
         populate: {
@@ -71,6 +71,33 @@ router.get("/me", async (req, res) => {
         },
       })
       .sort({ createdAt: -1 });
+
+    if (!memberships || memberships.length === 0) {
+      let org = await Organization.findOne({ ownerId: req.user.id });
+      if (!org) {
+        const user = await User.findById(req.user.id);
+        const orgName = user?.name ? `${user.name}'s Organization` : "My Organization";
+        org = await Organization.create({
+          name: orgName,
+          ownerId: req.user.id,
+        });
+      }
+      await Membership.create({
+        userId: req.user.id,
+        organizationId: org._id,
+        role: "admin",
+      });
+
+      memberships = await Membership.find({ userId: req.user.id })
+        .populate({
+          path: "organizationId",
+          populate: {
+            path: "ownerId",
+            select: "name email",
+          },
+        })
+        .sort({ createdAt: -1 });
+    }
 
     const organizations = memberships
       .filter((m) => m.organizationId)

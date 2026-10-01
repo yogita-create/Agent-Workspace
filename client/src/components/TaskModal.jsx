@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
+import axiosInstance from "../api/axiosInstance";
 import "./TaskModal.css";
-
-const API_URL = "http://localhost:5000";
 
 function TaskModal({
   taskToEdit = null,
@@ -47,11 +46,11 @@ function TaskModal({
       setAvailableMembers(selectedProj.members);
     } else {
       // Fetch all collaborators
-      fetch(`${API_URL}/api/tasks/collaborators/all`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            setAvailableMembers(data.collaborators || []);
+      axiosInstance
+        .get("/api/tasks/collaborators/all")
+        .then((res) => {
+          if (res.data.success) {
+            setAvailableMembers(res.data.collaborators || []);
           }
         })
         .catch(() => {});
@@ -106,22 +105,13 @@ function TaskModal({
         },
       };
 
-      const url = taskToEdit
-        ? `${API_URL}/api/tasks/${taskToEdit._id}`
-        : `${API_URL}/api/tasks`;
-      const method = taskToEdit ? "PUT" : "POST";
+      const response = taskToEdit
+        ? await axiosInstance.put(`/api/tasks/${taskToEdit._id}`, payload)
+        : await axiosInstance.post("/api/tasks", payload);
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const data = response.data;
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         throw new Error(data.message || "Failed to save task");
       }
 
@@ -131,7 +121,11 @@ function TaskModal({
       onClose();
     } catch (err) {
       console.error("Save task error:", err);
-      setError(err.message || "Failed to save task.");
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to save task."
+      );
     } finally {
       setLoading(false);
     }

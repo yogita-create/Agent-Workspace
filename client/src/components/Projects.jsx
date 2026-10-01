@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
+import axiosInstance from "../api/axiosInstance";
 
 import "./Projects.css";
 
@@ -55,17 +55,8 @@ function Projects() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(
-          "http://localhost:5000/api/projects"
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to load projects: ${response.status}`
-          );
-        }
-
-        const data = await response.json();
+        const response = await axiosInstance.get("/api/projects");
+        const data = response.data;
 
         if (!ignore && data.success) {
           setProjects(
@@ -82,7 +73,8 @@ function Projects() {
           );
 
           setError(
-            "Failed to load projects. Please try again."
+            error.response?.data?.message ||
+              "Failed to load projects. Please try again."
           );
         }
       } finally {
@@ -205,34 +197,17 @@ function Projects() {
       setSaving(true);
       setError("");
 
-      const response = await fetch(
-        "http://localhost:5000/api/projects",
-        {
-          method: "POST",
+      const response = await axiosInstance.post("/api/projects", {
+        name: project.name.trim(),
+        description: project.description.trim(),
+        techStack: project.techStack.trim(),
+        goal: project.goal.trim(),
+        members: members,
+      });
 
-          headers: {
-            "Content-Type": "application/json",
-          },
+      const data = response.data;
 
-          body: JSON.stringify({
-            name: project.name.trim(),
-
-            description:
-              project.description.trim(),
-
-            techStack:
-              project.techStack.trim(),
-
-            goal: project.goal.trim(),
-
-            members: members,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         throw new Error(
           data.message ||
             "Failed to create project"
@@ -263,7 +238,8 @@ function Projects() {
       );
 
       setError(
-        error.message ||
+        error.response?.data?.message ||
+          error.message ||
           "Failed to create project."
       );
     } finally {

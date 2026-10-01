@@ -16,9 +16,8 @@ import {
   X,
 } from "lucide-react";
 import { getTaskAlerts } from "../utils/alertUtils";
+import axiosInstance from "../api/axiosInstance";
 import "./Dashboard.css";
-
-const API_URL = "http://localhost:5000";
 
 function Dashboard({ onNavigate }) {
   const [projects, setProjects] = useState([]);
@@ -51,12 +50,12 @@ function Dashboard({ onNavigate }) {
       try {
         setLoading(true);
         const [projRes, tasksRes] = await Promise.all([
-          fetch(`${API_URL}/api/projects`),
-          fetch(`${API_URL}/api/tasks`),
+          axiosInstance.get("/api/projects"),
+          axiosInstance.get("/api/tasks"),
         ]);
 
-        const projData = await projRes.json();
-        const tasksData = await tasksRes.json();
+        const projData = projRes.data;
+        const tasksData = tasksRes.data;
 
         if (ignore) return;
 

@@ -29,6 +29,12 @@ const projectSchema = new mongoose.Schema(
       default: "Active",
     },
 
+    organizationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      required: true,
+    },
+
     workspaceId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Workspace",

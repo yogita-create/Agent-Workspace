@@ -417,6 +417,12 @@
   margin-top: 2px;
 }
 
+.collaborator-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .collaborator-role-badge {
   font-size: 11.5px;
   font-weight: 700;
@@ -426,6 +432,49 @@
   padding: 3px 10px;
   border-radius: 12px;
   white-space: nowrap;
+}
+
+.collaborator-role-badge.role-reviewer {
+  color: #7c3aed;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+.collaborator-role-badge.role-assignee {
+  color: #059669;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.collaborator-role-badge.role-watcher {
+  color: #d97706;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.collab-remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: transparent;
+  color: var(--text-muted, #94a3b8);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.collab-remove-btn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #ef4444;
+}
+
+.collab-remove-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ==========================================

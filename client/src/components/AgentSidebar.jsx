@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
+import axiosInstance from "../api/axiosInstance";
 import "./AgentSidebar.css";
-
-const API_URL = "http://localhost:5000";
 
 function AgentSidebar({
   activeSessionId,
@@ -25,18 +24,8 @@ function AgentSidebar({
       try {
         setLoadingChats(true);
 
-        const response = await fetch(
-          `${API_URL}/api/chat/sessions`
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to load chats: ${response.status}`
-          );
-        }
-
-        const data =
-          await response.json();
+        const response = await axiosInstance.get("/api/chat/sessions");
+        const data = response.data;
 
         if (
           !ignore &&

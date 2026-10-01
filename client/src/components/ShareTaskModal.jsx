@@ -8,29 +8,39 @@ import {
   MessageSquare,
   Sparkles,
   UserCheck,
+  Trash2,
+  Shield,
 } from "lucide-react";
+import axiosInstance from "../api/axiosInstance";
+import { useAuth } from "../context/AuthContext";
 import "./ShareTaskModal.css";
 
-const API_URL = "http://localhost:5000";
-
 function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] }) {
+  const { user } = useAuth();
   const [recipientName, setRecipientName] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [role, setRole] = useState("Collaborator");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
+  const [unsharingEmail, setUnsharingEmail] = useState(null);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [collaborators, setCollaborators] = useState([]);
+  const [currentTask, setCurrentTask] = useState(task);
+
+  // Sync task state
+  useEffect(() => {
+    setCurrentTask(task);
+  }, [task]);
 
   // Fetch collaborators if available
   useEffect(() => {
     if (availableMembers.length === 0) {
-      fetch(`${API_URL}/api/tasks/collaborators/all`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success && Array.isArray(data.collaborators)) {
-            setCollaborators(data.collaborators);
+      axiosInstance
+        .get("/api/tasks/collaborators/all")
+        .then((res) => {
+          if (res.data.success && Array.isArray(res.data.collaborators)) {
+            setCollaborators(res.data.collaborators);
           }
         })
         .catch((err) => console.error("Error fetching collaborators:", err));
@@ -43,7 +53,10 @@ function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] })
     setRecipientName(member.name || "");
     setRecipientEmail(member.email || "");
     if (member.role) {
-      setRole(member.role);
+      // Map display roles to task collaboration role if relevant
+      if (["Reviewer", "Assignee", "Watcher", "Collaborator"].includes(member.role)) {
+        setRole(member.role);
+      }
     }
     setError("");
   };
@@ -61,29 +74,26 @@ function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] })
       setError("");
       setSuccessMsg("");
 
-      const response = await fetch(`${API_URL}/api/tasks/${task._id}/share`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: recipientName.trim(),
-          email: recipientEmail.trim(),
-          role: role,
-          note: note.trim(),
-          sharedBy: "Yogita",
-        }),
+      const response = await axiosInstance.post(`/api/tasks/${currentTask._id}/share`, {
+        name: recipientName.trim(),
+        email: recipientEmail.trim(),
+        role: role,
+        note: note.trim(),
+        sharedBy: user?.name || user?.email || "Workspace Member",
       });
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         throw new Error(data.message || "Failed to share task");
       }
 
       setSuccessMsg(`Task successfully shared with ${recipientName}!`);
-      if (onTaskUpdated && data.task) {
-        onTaskUpdated(data.task);
+      if (data.task) {
+        setCurrentTask(data.task);
+        if (onTaskUpdated) {
+          onTaskUpdated(data.task);
+        }
       }
 
       // Reset form fields
@@ -97,13 +107,49 @@ function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] })
       }, 1200);
     } catch (err) {
       console.error("Share task error:", err);
-      setError(err.message || "Failed to share task.");
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to share task.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const existingShared = Array.isArray(task.sharedWith) ? task.sharedWith : [];
+  const handleUnshare = async (collabEmail) => {
+    if (!collabEmail) return;
+
+    try {
+      setUnsharingEmail(collabEmail);
+      setError("");
+
+      const response = await axiosInstance.delete(
+        `/api/tasks/${currentTask._id}/share/${encodeURIComponent(collabEmail)}`
+      );
+
+      const data = response.data;
+      if (data.success && data.task) {
+        setCurrentTask(data.task);
+        if (onTaskUpdated) {
+          onTaskUpdated(data.task);
+        }
+      }
+    } catch (err) {
+      console.error("Unshare error:", err);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to remove collaborator.";
+      setError(msg);
+    } finally {
+      setUnsharingEmail(null);
+    }
+  };
+
+  const existingShared = Array.isArray(currentTask.sharedWith) ? currentTask.sharedWith : [];
 
   return (
     <div
@@ -123,7 +169,7 @@ function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] })
               Share Task with Collaborators
             </h2>
             <p className="share-task-context">
-              Task: <strong>{task.taskKey || "TSK"}</strong> — {task.title}
+              Task: <strong>{currentTask.taskKey || "TSK"}</strong> — {currentTask.title}
             </p>
           </div>
 
@@ -253,7 +299,10 @@ function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] })
         {/* EXISTING COLLABORATORS */}
         {existingShared.length > 0 && (
           <div className="existing-collaborators-section">
-            <h4>Currently Shared With ({existingShared.length})</h4>
+            <h4>
+              <Shield size={14} style={{ display: "inline", marginRight: 4, verticalAlign: "middle" }} />
+              Currently Shared With ({existingShared.length})
+            </h4>
             <div className="collaborators-list">
               {existingShared.map((collab, index) => (
                 <div className="collaborator-item" key={index}>
@@ -272,9 +321,20 @@ function ShareTaskModal({ task, onClose, onTaskUpdated, availableMembers = [] })
                     </div>
                   </div>
 
-                  <span className="collaborator-role-badge">
-                    {collab.role || "Collaborator"}
-                  </span>
+                  <div className="collaborator-item-actions">
+                    <span className={`collaborator-role-badge role-${(collab.role || "collaborator").toLowerCase()}`}>
+                      {collab.role || "Collaborator"}
+                    </span>
+                    <button
+                      type="button"
+                      className="collab-remove-btn"
+                      title="Remove collaborator"
+                      onClick={() => handleUnshare(collab.email)}
+                      disabled={unsharingEmail === collab.email}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

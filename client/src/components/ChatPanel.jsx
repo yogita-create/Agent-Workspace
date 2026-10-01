@@ -18,8 +18,7 @@ import {
 } from "lucide-react";
 import "./ChatPanel.css";
 import ActionCard from "./ActionCard";
-
-const API_URL = "http://localhost:5000";
+import axiosInstance from "../api/axiosInstance";
 
 const welcomeMessage = {
   role: "assistant",
@@ -69,13 +68,8 @@ function ChatPanel({ sessionId: propSessionId }) {
     try {
       setLoadingChats(true);
 
-      const response = await fetch(`${API_URL}/api/chat/sessions`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to load sessions: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const response = await axiosInstance.get("/api/chat/sessions");
+      const data = response.data;
 
       if (data.success) {
         const loadedSessions = data.sessions || [];
@@ -117,15 +111,10 @@ function ChatPanel({ sessionId: propSessionId }) {
         setLoadingMessages(true);
         setMessages([]);
 
-        const response = await fetch(
-          `${API_URL}/api/chat/sessions/${activeSessionId}/messages`
+        const response = await axiosInstance.get(
+          `/api/chat/sessions/${activeSessionId}/messages`
         );
-
-        if (!response.ok) {
-          throw new Error(`Failed to load messages: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const data = response.data;
 
         if (ignore) return;
 
@@ -175,21 +164,11 @@ function ChatPanel({ sessionId: propSessionId }) {
 
   const createNewChat = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/chat/sessions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: "New Chat",
-        }),
+      const response = await axiosInstance.post("/api/chat/sessions", {
+        title: "New Chat",
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to create chat: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = response.data;
 
       if (!data.success) {
         throw new Error(data.message || "Failed to create chat");
@@ -246,20 +225,14 @@ function ChatPanel({ sessionId: propSessionId }) {
     }
 
     try {
-      const response = await fetch(
-        `${API_URL}/api/chat/sessions/${sessionId}`,
+      const response = await axiosInstance.patch(
+        `/api/chat/sessions/${sessionId}`,
         {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title: editingTitle.trim(),
-          }),
+          title: editingTitle.trim(),
         }
       );
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
         setSessions((prev) =>
@@ -290,14 +263,11 @@ function ChatPanel({ sessionId: propSessionId }) {
     }
 
     try {
-      const response = await fetch(
-        `${API_URL}/api/chat/sessions/${sessionId}`,
-        {
-          method: "DELETE",
-        }
+      const response = await axiosInstance.delete(
+        `/api/chat/sessions/${sessionId}`
       );
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
         const remainingSessions = sessions.filter((s) => s._id !== sessionId);
@@ -333,19 +303,13 @@ function ChatPanel({ sessionId: propSessionId }) {
     // CREATE SESSION IF NONE EXISTS
     if (!currentSessionId) {
       try {
-        const response = await fetch(`${API_URL}/api/chat/sessions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title: "New Chat",
-          }),
+        const response = await axiosInstance.post("/api/chat/sessions", {
+          title: "New Chat",
         });
 
-        const data = await response.json();
+        const data = response.data;
 
-        if (!response.ok || !data.success) {
+        if (!data.success) {
           throw new Error(data.message || "Failed to create session");
         }
 
@@ -371,20 +335,14 @@ function ChatPanel({ sessionId: propSessionId }) {
     setSending(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/chat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sessionId: currentSessionId,
-          message: userMessage,
-        }),
+      const response = await axiosInstance.post("/api/chat", {
+        sessionId: currentSessionId,
+        message: userMessage,
       });
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         throw new Error(data.error || data.message || "Chat request failed");
       }
 

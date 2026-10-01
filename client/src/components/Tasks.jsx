@@ -14,11 +14,12 @@ import {
 import TaskCard from "./TaskCard";
 import TaskModal from "./TaskModal";
 import ShareTaskModal from "./ShareTaskModal";
+import axiosInstance from "../api/axiosInstance";
+import { useAuth } from "../context/AuthContext";
 import "./Tasks.css";
 
-const API_URL = "http://localhost:5000";
-
 function Tasks() {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,12 +44,12 @@ function Tasks() {
       setError("");
 
       const [tasksRes, projectsRes] = await Promise.all([
-        fetch(`${API_URL}/api/tasks`),
-        fetch(`${API_URL}/api/projects`),
+        axiosInstance.get("/api/tasks"),
+        axiosInstance.get("/api/projects"),
       ]);
 
-      const tasksData = await tasksRes.json();
-      const projectsData = await projectsRes.json();
+      const tasksData = tasksRes.data;
+      const projectsData = projectsRes.data;
 
       if (tasksData.success) {
         setTasks(tasksData.tasks || []);
@@ -58,7 +59,10 @@ function Tasks() {
       }
     } catch (err) {
       console.error("Load tasks error:", err);
-      setError("Failed to load tasks. Please try again.");
+      setError(
+        err.response?.data?.message ||
+          "Failed to load tasks. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -76,14 +80,12 @@ function Tasks() {
         prev.map((t) => (t._id === taskId ? { ...t, status: newStatus } : t))
       );
 
-      const res = await fetch(`${API_URL}/api/tasks/${taskId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+      const res = await axiosInstance.put(`/api/tasks/${taskId}`, {
+        status: newStatus,
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
+      const data = res.data;
+      if (!data.success) {
         // Revert on error
         fetchTasksAndProjects();
       }
@@ -99,7 +101,7 @@ function Tasks() {
 
     try {
       setTasks((prev) => prev.filter((t) => t._id !== taskId));
-      await fetch(`${API_URL}/api/tasks/${taskId}`, { method: "DELETE" });
+      await axiosInstance.delete(`/api/tasks/${taskId}`);
     } catch (err) {
       console.error("Delete task error:", err);
       fetchTasksAndProjects();
@@ -154,17 +156,22 @@ function Tasks() {
 
       // Quick filter
       if (quickFilter === "my_tasks") {
+        const userEmail = user?.email?.toLowerCase() || "yogita";
+        const userName = user?.name?.toLowerCase() || "yogita";
         const isMine =
-          task.assignee?.name?.toLowerCase().includes("yogita") ||
-          task.assignee?.email?.toLowerCase().includes("yogita");
+          (task.assignee?.email && task.assignee.email.toLowerCase() === userEmail) ||
+          (task.assignee?.name && task.assignee.name.toLowerCase().includes(userName)) ||
+          (task.createdBy?.email && task.createdBy.email.toLowerCase() === userEmail);
         if (!isMine) return false;
       } else if (quickFilter === "shared_with_me") {
+        const userEmail = user?.email?.toLowerCase() || "yogita";
+        const userName = user?.name?.toLowerCase() || "yogita";
         const isShared =
           Array.isArray(task.sharedWith) &&
           task.sharedWith.some(
             (s) =>
-              s.name?.toLowerCase().includes("yogita") ||
-              s.email?.toLowerCase().includes("yogita")
+              (s.email && s.email.toLowerCase() === userEmail) ||
+              (s.name && s.name.toLowerCase().includes(userName))
           );
         if (!isShared) return false;
       } else if (quickFilter === "overdue") {

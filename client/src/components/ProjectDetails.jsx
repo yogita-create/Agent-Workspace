@@ -4,10 +4,9 @@ import { Plus, CheckCircle2, Clock, AlertTriangle, Layers } from "lucide-react";
 import TaskCard from "./TaskCard";
 import TaskModal from "./TaskModal";
 import ShareTaskModal from "./ShareTaskModal";
+import axiosInstance from "../api/axiosInstance";
 
 import "./ProjectDetails.css";
-
-const API_URL = "http://localhost:5000";
 
 const emptyMember = {
   name: "",
@@ -82,18 +81,8 @@ function ProjectDetails() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(
-          `${API_URL}/api/projects/${projectId}`
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to load project: ${response.status}`
-          );
-        }
-
-        const data =
-          await response.json();
+        const response = await axiosInstance.get(`/api/projects/${projectId}`);
+        const data = response.data;
 
         if (ignore) return;
 
@@ -113,7 +102,8 @@ function ProjectDetails() {
           );
 
           setError(
-            error.message ||
+            error.response?.data?.message ||
+              error.message ||
               "Failed to load project."
           );
         }
@@ -141,8 +131,8 @@ function ProjectDetails() {
   const fetchProjectTasks = async () => {
     try {
       setLoadingTasks(true);
-      const response = await fetch(`${API_URL}/api/tasks?projectId=${projectId}`);
-      const data = await response.json();
+      const response = await axiosInstance.get(`/api/tasks?projectId=${projectId}`);
+      const data = response.data;
       if (data.success) {
         setTasks(data.tasks || []);
       }
@@ -158,11 +148,7 @@ function ProjectDetails() {
       setTasks((prev) =>
         prev.map((t) => (t._id === taskId ? { ...t, status: newStatus } : t))
       );
-      await fetch(`${API_URL}/api/tasks/${taskId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      await axiosInstance.put(`/api/tasks/${taskId}`, { status: newStatus });
     } catch (err) {
       console.error("Update task status error:", err);
       fetchProjectTasks();
@@ -173,7 +159,7 @@ function ProjectDetails() {
     if (!window.confirm("Are you sure you want to delete this task?")) return;
     try {
       setTasks((prev) => prev.filter((t) => t._id !== taskId));
-      await fetch(`${API_URL}/api/tasks/${taskId}`, { method: "DELETE" });
+      await axiosInstance.delete(`/api/tasks/${taskId}`);
     } catch (err) {
       console.error("Delete task error:", err);
       fetchProjectTasks();
@@ -336,45 +322,21 @@ function ProjectDetails() {
 
       setEditError("");
 
-      const response = await fetch(
-        `${API_URL}/api/projects/${projectId}`,
+      const response = await axiosInstance.put(
+        `/api/projects/${projectId}`,
         {
-          method: "PUT",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            name:
-              editProject.name.trim(),
-
-            description:
-              editProject.description.trim(),
-
-            techStack:
-              editProject.techStack.trim(),
-
-            goal:
-              editProject.goal.trim(),
-
-            status:
-              editProject.status,
-
-            members:
-              editMembers,
-          }),
+          name: editProject.name.trim(),
+          description: editProject.description.trim(),
+          techStack: editProject.techStack.trim(),
+          goal: editProject.goal.trim(),
+          status: editProject.status,
+          members: editMembers,
         }
       );
 
-      const data =
-        await response.json();
+      const data = response.data;
 
-      if (
-        !response.ok ||
-        !data.success
-      ) {
+      if (!data.success) {
         throw new Error(
           data.message ||
             "Failed to update project"
@@ -398,7 +360,8 @@ function ProjectDetails() {
       );
 
       setEditError(
-        error.message ||
+        error.response?.data?.message ||
+          error.message ||
           "Failed to update project."
       );
     } finally {

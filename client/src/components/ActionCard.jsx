@@ -1,4 +1,5 @@
 import { useState } from "react";
+import axiosInstance from "../api/axiosInstance";
 import "./ChatPanel.css";
 
 function ActionCard({ action }) {
@@ -19,17 +20,11 @@ function ActionCard({ action }) {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/actions/${action._id}/approve`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await axiosInstance.post(
+        `/api/actions/${action._id}/approve`
       );
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
         setStatus("approved");
@@ -48,17 +43,11 @@ function ActionCard({ action }) {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/actions/${action._id}/reject`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await axiosInstance.post(
+        `/api/actions/${action._id}/reject`
       );
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
         setStatus("rejected");

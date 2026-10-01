@@ -17,9 +17,8 @@ import {
 } from "lucide-react";
 import TaskModal from "./TaskModal";
 import ShareTaskModal from "./ShareTaskModal";
+import axiosInstance from "../api/axiosInstance";
 import "./Calendar.css";
-
-const API_URL = "http://localhost:5000";
 
 const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
@@ -50,12 +49,12 @@ function Calendar({ onNavigate }) {
       setError("");
 
       const [tasksRes, projectsRes] = await Promise.all([
-        fetch(`${API_URL}/api/tasks`),
-        fetch(`${API_URL}/api/projects`),
+        axiosInstance.get("/api/tasks"),
+        axiosInstance.get("/api/projects"),
       ]);
 
-      const tasksData = await tasksRes.json();
-      const projectsData = await projectsRes.json();
+      const tasksData = tasksRes.data;
+      const projectsData = projectsRes.data;
 
       if (tasksData.success) {
         setTasks(tasksData.tasks || []);

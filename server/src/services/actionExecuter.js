@@ -65,14 +65,22 @@ export async function executeAction(action) {
         note: payload.note || "",
       };
 
+      if (!Array.isArray(task.sharedWith)) {
+        task.sharedWith = [];
+      }
+
       const existingIndex = task.sharedWith.findIndex(
-        (s) => s.email.toLowerCase() === payload.recipient_email.toLowerCase()
+        (s) => s.email && s.email.toLowerCase() === payload.recipient_email.toLowerCase()
       );
 
       if (existingIndex >= 0) {
         task.sharedWith[existingIndex] = shareEntry;
       } else {
         task.sharedWith.push(shareEntry);
+      }
+
+      if (!Array.isArray(task.comments)) {
+        task.comments = [];
       }
 
       if (payload.note && payload.note.trim()) {

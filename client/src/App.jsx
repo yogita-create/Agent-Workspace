@@ -17,10 +17,9 @@ import Alerts from "./components/Alerts";
 import ChatPanel from "./components/ChatPanel";
 import Settings from "./components/Settings";
 import Calendar from "./components/Calendar";
+import axiosInstance from "./api/axiosInstance";
 
 import "./App.css";
-
-const API_URL = "http://localhost:5000";
 
 function App() {
   const navigate = useNavigate();
@@ -157,18 +156,8 @@ function App() {
 
   const createNewSession = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/chat/sessions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to create session: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const response = await axiosInstance.post("/api/chat/sessions");
+      const data = response.data;
 
       if (data.success && data.session) {
         setSessionId(data.session._id);
@@ -211,13 +200,8 @@ function App() {
       try {
         setLoadingSession(true);
 
-        const response = await fetch(`${API_URL}/api/chat/sessions`);
-
-        if (!response.ok) {
-          throw new Error(`Failed to load sessions: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const response = await axiosInstance.get("/api/chat/sessions");
+        const data = response.data;
 
         if (ignore) return;
 

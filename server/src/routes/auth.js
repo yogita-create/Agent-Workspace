@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
 import User from "../models/User.js";
+import Organization from "../models/Organization.js";
+import Membership from "../models/Membership.js";
 
 const router = express.Router();
 
@@ -83,6 +85,22 @@ router.post("/register", async (req, res) => {
     });
 
     await user.save();
+
+    // Auto-create default organization & admin membership for the newly registered user
+    try {
+      const org = await Organization.create({
+        name: `${user.name}'s Organization`,
+        ownerId: user._id,
+      });
+
+      await Membership.create({
+        userId: user._id,
+        organizationId: org._id,
+        role: "admin",
+      });
+    } catch (orgErr) {
+      console.error("Auto-create organization on register error:", orgErr);
+    }
 
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
