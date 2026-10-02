@@ -21,6 +21,7 @@ import Alerts from "./components/Alerts";
 import ChatPanel from "./components/ChatPanel";
 import Settings from "./components/Settings";
 import Calendar from "./components/Calendar";
+import TeamManagement from "./components/TeamManagement";
 import axiosInstance from "./api/axiosInstance";
 
 import "./App.css";
@@ -107,6 +108,8 @@ function App() {
       setActivePage("alerts");
     } else if (path === "/calendar") {
       setActivePage("calendar");
+    } else if (path === "/team") {
+      setActivePage("team");
     } else if (path === "/settings") {
       setActivePage("settings");
     } else {
@@ -144,6 +147,10 @@ function App() {
 
       case "calendar":
         navigate("/calendar");
+        break;
+
+      case "team":
+        navigate("/team");
         break;
 
       case "settings":
@@ -353,6 +360,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <Calendar onNavigate={handleNavigate} />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* TEAM & ACCESS */}
+          <Route
+            path="/team"
+            element={
+              <ProtectedRoute>
+                <TeamManagement />
               </ProtectedRoute>
             }
           />

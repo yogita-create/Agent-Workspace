@@ -8,6 +8,7 @@ import {
   Bell,
   Bot,
   CalendarDays,
+  Users,
   Settings,
   Brain,
   Sun,
@@ -55,6 +56,11 @@ function Sidebar({
       id: "calendar",
       label: "Calendar",
       icon: CalendarDays,
+    },
+    {
+      id: "team",
+      label: "Team",
+      icon: Users,
     },
     {
       id: "settings",
