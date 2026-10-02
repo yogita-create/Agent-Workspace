@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../api/axiosInstance";
 
 import "./Projects.css";
@@ -24,6 +25,7 @@ function Projects() {
   // STATE
   // ==========================================
   const navigate = useNavigate();
+  const { loading: authLoading } = useAuth();
 
   const [showForm, setShowForm] = useState(false);
 
@@ -48,6 +50,8 @@ function Projects() {
   // ==========================================
 
   useEffect(() => {
+    if (authLoading) return;
+
     let ignore = false;
 
     const fetchProjects = async () => {
@@ -89,7 +93,7 @@ function Projects() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [authLoading]);
 
 
   // ==========================================

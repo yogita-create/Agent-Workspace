@@ -8,6 +8,7 @@ import {
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import { useAuth } from "./context/AuthContext";
 import ProjectDetails from "./components/ProjectDetails";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
@@ -24,6 +25,7 @@ import "./App.css";
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { loading: authLoading } = useAuth();
 
   // ==========================================
   // THEME MANAGEMENT (DARK / LIGHT / SYSTEM)
@@ -196,6 +198,10 @@ function App() {
       return;
     }
 
+    if (authLoading) {
+      return;
+    }
+
     const loadInitialSession = async () => {
       try {
         setLoadingSession(true);
@@ -226,7 +232,7 @@ function App() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [authLoading]);
 
   // ==========================================
   // MAIN UI

@@ -82,14 +82,11 @@ function Calendar({ onNavigate }) {
         prev.map((t) => (t._id === taskId ? { ...t, status: newStatus } : t))
       );
 
-      const res = await fetch(`${API_URL}/api/tasks/${taskId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+      const response = await axiosInstance.put(`/api/tasks/${taskId}`, {
+        status: newStatus,
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
+      if (!response.data?.success) {
         fetchTasksAndProjects();
       }
     } catch (err) {
