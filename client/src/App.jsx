@@ -4,10 +4,13 @@ import {
   Route,
   useNavigate,
   useLocation,
+  Navigate,
 } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import AcceptInvite from "./pages/AcceptInvite";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./context/AuthContext";
 import ProjectDetails from "./components/ProjectDetails";
 import Sidebar from "./components/Sidebar";
@@ -191,7 +194,9 @@ function App() {
     let ignore = false;
 
     const isAuthPage =
-      location.pathname === "/login" || location.pathname === "/register";
+      location.pathname.startsWith("/login") ||
+      location.pathname.startsWith("/register") ||
+      location.pathname.startsWith("/accept-invite");
 
     if (isAuthPage) {
       setLoadingSession(false);
@@ -239,25 +244,36 @@ function App() {
   // ==========================================
 
   const isAuthPage =
-    location.pathname === "/login" || location.pathname === "/register";
+    location.pathname.startsWith("/login") ||
+    location.pathname.startsWith("/register") ||
+    location.pathname.startsWith("/accept-invite");
+
+  // Render standalone auth pages (no Sidebar, no main-content wrapper)
+  if (isAuthPage) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/accept-invite/:token" element={<AcceptInvite />} />
+      </Routes>
+    );
+  }
 
   return (
     <div className="app">
       {/* ======================================
           LEFT SIDEBAR
       ====================================== */}
-      {!isAuthPage && (
-        <Sidebar
-          activePage={activePage}
-          onNavigate={handleNavigate}
-          onNewChat={createNewSession}
-          onSelectSession={selectSession}
-          activeSessionId={sessionId}
-          refreshChats={refreshChats}
-          currentTheme={theme}
-          onThemeChange={handleThemeChange}
-        />
-      )}
+      <Sidebar
+        activePage={activePage}
+        onNavigate={handleNavigate}
+        onNewChat={createNewSession}
+        onSelectSession={selectSession}
+        activeSessionId={sessionId}
+        refreshChats={refreshChats}
+        currentTheme={theme}
+        onThemeChange={handleThemeChange}
+      />
 
       {/* ======================================
           MAIN CONTENT
@@ -267,59 +283,96 @@ function App() {
           {/* DASHBOARD */}
           <Route
             path="/"
-            element={<Dashboard onNavigate={handleNavigate} />}
+            element={
+              <ProtectedRoute>
+                <Dashboard onNavigate={handleNavigate} />
+              </ProtectedRoute>
+            }
           />
 
           {/* PROJECT LIST */}
-          <Route path="/projects" element={<Projects />} />
+          <Route
+            path="/projects"
+            element={
+              <ProtectedRoute>
+                <Projects />
+              </ProtectedRoute>
+            }
+          />
 
           {/* PROJECT DETAILS */}
-          <Route path="/projects/:projectId" element={<ProjectDetails />} />
+          <Route
+            path="/projects/:projectId"
+            element={
+              <ProtectedRoute>
+                <ProjectDetails />
+              </ProtectedRoute>
+            }
+          />
 
           {/* AI AGENT */}
           <Route
             path="/ai-agent"
             element={
-              loadingSession ? (
-                <div className="page-loading">Loading Workspace Bot...</div>
-              ) : (
-                <ChatPanel
-                  key={chatResetKey}
-                  sessionId={sessionId}
-                />
-              )
+              <ProtectedRoute>
+                {loadingSession ? (
+                  <div className="page-loading">Loading Workspace Bot...</div>
+                ) : (
+                  <ChatPanel
+                    key={chatResetKey}
+                    sessionId={sessionId}
+                  />
+                )}
+              </ProtectedRoute>
             }
           />
 
           {/* TASKS */}
-          <Route path="/tasks" element={<Tasks />} />
+          <Route
+            path="/tasks"
+            element={
+              <ProtectedRoute>
+                <Tasks />
+              </ProtectedRoute>
+            }
+          />
 
           {/* ALERTS */}
-          <Route path="/alerts" element={<Alerts onNavigate={handleNavigate} />} />
+          <Route
+            path="/alerts"
+            element={
+              <ProtectedRoute>
+                <Alerts onNavigate={handleNavigate} />
+              </ProtectedRoute>
+            }
+          />
 
           {/* CALENDAR */}
-          <Route path="/calendar" element={<Calendar onNavigate={handleNavigate} />} />
+          <Route
+            path="/calendar"
+            element={
+              <ProtectedRoute>
+                <Calendar onNavigate={handleNavigate} />
+              </ProtectedRoute>
+            }
+          />
 
           {/* SETTINGS */}
           <Route
             path="/settings"
             element={
-              <Settings
-                currentTheme={theme}
-                onThemeChange={handleThemeChange}
-              />
-
+              <ProtectedRoute>
+                <Settings
+                  currentTheme={theme}
+                  onThemeChange={handleThemeChange}
+                />
+              </ProtectedRoute>
             }
           />
-          {/* LOGIN */}
-          <Route path="/login" element={<Login />} />
-
-          {/* REGISTER */}
-          <Route path="/register" element={<Register />} />
         </Routes>
       </main>
     </div>
   );
 }
 
-export default App;
+export default App;
