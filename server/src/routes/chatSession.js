@@ -1,8 +1,12 @@
 import express from "express";
 import ChatSession from "../models/ChatSession.js";
 import ChatMessage from "../models/ChatMessage.js";
+import verifyToken from "../middleware/verifyToken.js";
 
 const router = express.Router();
+
+// Apply verifyToken middleware to all chat session routes
+router.use(verifyToken);
 
 // ==========================================
 // 1. CREATE NEW CHAT SESSION
@@ -14,6 +18,7 @@ router.post("/", async (req, res) => {
     const { title } = req.body;
     const session = await ChatSession.create({
       title: title && title.trim() ? title.trim() : "New Chat",
+      userId: req.user.id,
     });
 
     res.status(201).json({
@@ -37,7 +42,7 @@ router.post("/", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const sessions = await ChatSession.find()
+    const sessions = await ChatSession.find({ userId: req.user.id })
       .sort({ lastMessageAt: -1, createdAt: -1 })
       .select("_id title lastMessageAt createdAt");
 
@@ -56,7 +61,46 @@ router.get("/", async (req, res) => {
 });
 
 // ==========================================
-// 3. GET CHAT HISTORY
+// 3. GET SINGLE CHAT SESSION
+// GET /api/chat/sessions/:sessionId
+// ==========================================
+
+router.get("/:sessionId", async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    const session = await ChatSession.findById(sessionId);
+
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: "Chat session not found",
+      });
+    }
+
+    if (!session.userId || session.userId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Access forbidden: You do not own this chat session",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      session,
+    });
+  } catch (error) {
+    console.error("Get session error:", error.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch chat session",
+    });
+  }
+});
+
+// ==========================================
+// 4. GET CHAT HISTORY
 // GET /api/chat/sessions/:sessionId/messages
 // ==========================================
 
@@ -71,6 +115,14 @@ router.get("/:sessionId/messages", async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Chat session not found",
+      });
+    }
+
+    // Verify ownership
+    if (!session.userId || session.userId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Access forbidden: You do not own this chat session",
       });
     }
 
@@ -97,7 +149,7 @@ router.get("/:sessionId/messages", async (req, res) => {
 });
 
 // ==========================================
-// 4. RENAME CHAT SESSION
+// 5. RENAME CHAT SESSION
 // PATCH /api/chat/sessions/:sessionId
 // ==========================================
 
@@ -113,11 +165,7 @@ router.patch("/:sessionId", async (req, res) => {
       });
     }
 
-    const session = await ChatSession.findByIdAndUpdate(
-      sessionId,
-      { title: title.trim() },
-      { new: true }
-    );
+    const session = await ChatSession.findById(sessionId);
 
     if (!session) {
       return res.status(404).json({
@@ -125,6 +173,16 @@ router.patch("/:sessionId", async (req, res) => {
         message: "Chat session not found",
       });
     }
+
+    if (!session.userId || session.userId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Access forbidden: You do not own this chat session",
+      });
+    }
+
+    session.title = title.trim();
+    await session.save();
 
     res.status(200).json({
       success: true,
@@ -142,7 +200,7 @@ router.patch("/:sessionId", async (req, res) => {
 });
 
 // ==========================================
-// 5. DELETE CHAT SESSION
+// 6. DELETE CHAT SESSION
 // DELETE /api/chat/sessions/:sessionId
 // ==========================================
 
@@ -150,7 +208,7 @@ router.delete("/:sessionId", async (req, res) => {
   try {
     const { sessionId } = req.params;
 
-    const session = await ChatSession.findByIdAndDelete(sessionId);
+    const session = await ChatSession.findById(sessionId);
 
     if (!session) {
       return res.status(404).json({
@@ -158,6 +216,15 @@ router.delete("/:sessionId", async (req, res) => {
         message: "Chat session not found",
       });
     }
+
+    if (!session.userId || session.userId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Access forbidden: You do not own this chat session",
+      });
+    }
+
+    await ChatSession.findByIdAndDelete(sessionId);
 
     // Also delete all messages belonging to this session
     await ChatMessage.deleteMany({ sessionId });

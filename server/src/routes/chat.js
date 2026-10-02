@@ -5,8 +5,12 @@ import Project from "../models/project.js";
 import Task from "../models/Task.js";
 import ChatSession from "../models/ChatSession.js";
 import ChatMessage from "../models/ChatMessage.js";
+import verifyToken from "../middleware/verifyToken.js";
 
 const router = express.Router();
+
+// Apply verifyToken middleware to all chat routes
+router.use(verifyToken);
 
 // ==========================================
 // SEND MESSAGE TO AGENT
@@ -36,7 +40,7 @@ router.post("/", async (req, res) => {
     }
 
     // --------------------------------------
-    // 2. Check if chat session exists
+    // 2. Check if chat session exists & verify ownership
     // --------------------------------------
 
     const session = await ChatSession.findById(sessionId);
@@ -45,6 +49,13 @@ router.post("/", async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Chat session not found",
+      });
+    }
+
+    if (!session.userId || session.userId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Access forbidden: You do not own this chat session",
       });
     }
 

@@ -7,12 +7,10 @@ const chatSessionSchema = new mongoose.Schema(
       default: "New Chat",
     },
 
-    // We will use this later when authentication is added
-    // For now, it can remain null
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      default: null,
+      required: true,
     },
 
     lastMessageAt: {
