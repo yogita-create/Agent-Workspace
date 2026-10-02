@@ -4,6 +4,7 @@ import { Plus, CheckCircle2, Clock, AlertTriangle, Layers } from "lucide-react";
 import TaskCard from "./TaskCard";
 import TaskModal from "./TaskModal";
 import ShareTaskModal from "./ShareTaskModal";
+import useOrganizationRole from "../hooks/useOrganizationRole";
 import axiosInstance from "../api/axiosInstance";
 
 import "./ProjectDetails.css";
@@ -18,6 +19,7 @@ function ProjectDetails() {
   const { projectId } = useParams();
 
   const navigate = useNavigate();
+  const { role } = useOrganizationRole();
 
   // ==========================================
   // PROJECT STATE
@@ -484,13 +486,15 @@ function ProjectDetails() {
               "Active"}
           </span>
 
-          <button
-            type="button"
-            className="edit-project-btn"
-            onClick={openEditModal}
-          >
-            ✏️ Edit Project
-          </button>
+          {role !== "employee" && (
+            <button
+              type="button"
+              className="edit-project-btn"
+              onClick={openEditModal}
+            >
+              ✏️ Edit Project
+            </button>
+          )}
 
         </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import useOrganizationRole from "../hooks/useOrganizationRole";
 import axiosInstance from "../api/axiosInstance";
 
 import "./Projects.css";
@@ -26,6 +27,7 @@ function Projects() {
   // ==========================================
   const navigate = useNavigate();
   const { loading: authLoading } = useAuth();
+  const { role } = useOrganizationRole();
 
   const [showForm, setShowForm] = useState(false);
 
@@ -297,16 +299,18 @@ function Projects() {
           </p>
         </div>
 
-        <button
-          type="button"
-          className="create-project-btn"
-          onClick={() => {
-            setError("");
-            setShowForm(true);
-          }}
-        >
-          + Create New Project
-        </button>
+        {role !== "employee" && (
+          <button
+            type="button"
+            className="create-project-btn"
+            onClick={() => {
+              setError("");
+              setShowForm(true);
+            }}
+          >
+            + Create New Project
+          </button>
+        )}
 
       </header>
 
