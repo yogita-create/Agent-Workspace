@@ -1,5 +1,4 @@
 # Agent-Workspace
-# Agent Workspace
 
 Agent Workspace is a **project management and team collaboration platform** designed to help teams organize projects, manage work, track progress, and collaborate efficiently from a centralized workspace.
 
