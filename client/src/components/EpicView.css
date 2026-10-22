@@ -1,0 +1,544 @@
+/* ==========================================
+   EPIC VIEW & STORY COLLAPSIBLE LIST STYLES
+========================================== */
+
+.epic-view-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.epics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Epic Card */
+.epic-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm, 0 1px 4px rgba(0, 0, 0, 0.04));
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.epic-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.epic-card.expanded {
+  border-color: #cbd5e1;
+}
+
+/* Collapsible Epic Header */
+.epic-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  cursor: pointer;
+  background: var(--bg-card, #ffffff);
+  user-select: none;
+  gap: 16px;
+  transition: background 0.15s ease;
+}
+
+.epic-card-header:hover {
+  background: var(--bg-tertiary, #f8fafc);
+}
+
+.epic-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.epic-expand-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary, #64748b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.epic-expand-toggle:hover {
+  background: #e2e8f0;
+  color: var(--text-primary, #0f172a);
+}
+
+.epic-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.epic-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.epic-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.epic-subtitle {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Header Right Side Controls */
+.epic-header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+/* Status Badges */
+.epic-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-todo {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.status-in-progress {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.status-in-review {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.status-done {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+/* Progress summary (X of Y stories done) */
+.epic-progress-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 130px;
+}
+
+.epic-progress-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #475569);
+}
+
+.epic-progress-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.epic-progress-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Add Story Header Button */
+.epic-add-story-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  background: var(--bg-card, #ffffff);
+  color: var(--text-primary, #0f172a);
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.epic-add-story-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+/* Expanded Stories Content */
+.epic-stories-content {
+  border-top: 1px solid var(--border-color, #f1f5f9);
+  background: var(--bg-tertiary, #f8fafc);
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: fadeInStories 0.2s ease-out;
+}
+
+@keyframes fadeInStories {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Inline Story Creation Form */
+.inline-add-story-form {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-sm, 0 2px 6px rgba(0, 0, 0, 0.05));
+  margin-bottom: 6px;
+}
+
+.inline-add-story-form h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.story-form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.story-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.story-form-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #475569);
+}
+
+.story-form-field input,
+.story-form-field select,
+.story-form-field textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+  background: var(--bg-input, #ffffff);
+  color: var(--text-primary, #0f172a);
+  box-sizing: border-box;
+}
+
+.story-form-field input:focus,
+.story-form-field select:focus,
+.story-form-field textarea:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.story-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.story-cancel-btn {
+  padding: 6px 14px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.story-cancel-btn:hover {
+  background: #f1f5f9;
+}
+
+.story-submit-btn {
+  padding: 6px 16px;
+  border: none;
+  background: #4f46e5;
+  color: #ffffff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.story-submit-btn:hover {
+  background: #4338ca;
+}
+
+.story-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Stories List & Story Card Item */
+.stories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.story-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  padding: 10px 14px;
+  gap: 14px;
+  transition: all 0.15s ease;
+}
+
+.story-item-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+}
+
+.story-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.story-icon {
+  flex-shrink: 0;
+}
+
+.story-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.story-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+}
+
+.story-desc {
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.story-item-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.story-points-pill {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  background: #f1f5f9;
+  color: #475569;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.story-tasks-pill {
+  font-size: 11.5px;
+  color: #64748b;
+  background: #f8fafc;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+.story-assignee {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.story-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #6366f1;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.story-assignee-name {
+  font-size: 12.5px;
+  color: var(--text-secondary, #334155);
+}
+
+/* Empty / Loading States */
+.epic-stories-empty,
+.epic-stories-loading {
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted, #94a3b8);
+  font-size: 13px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.epic-view-empty {
+  text-align: center;
+  padding: 48px 24px;
+  background: var(--bg-card, #ffffff);
+  border: 1px dashed var(--border-color, #cbd5e1);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.epic-empty-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #f5f3ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.epic-view-empty h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-primary, #0f172a);
+}
+
+.epic-view-empty p {
+  margin: 0;
+  max-width: 440px;
+  font-size: 14px;
+  color: var(--text-muted, #64748b);
+}
+
+.create-epic-empty-btn {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border: none;
+  background: #7c3aed;
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.create-epic-empty-btn:hover {
+  background: #6d28d9;
+}
+
+.epic-view-loading,
+.epic-view-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  color: var(--text-secondary, #475569);
+}
+
+.epic-view-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #7c3aed;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 800px) {
+  .epic-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .epic-header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .story-item-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .story-form-row {
+    flex-direction: column;
+  }
+}

@@ -7,6 +7,12 @@ const taskSchema = new mongoose.Schema(
       ref: "Project",
       required: true,
     },
+    storyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Story",
+      required: false,
+      default: null,
+    },
     taskKey: {
       type: String,
       trim: true,

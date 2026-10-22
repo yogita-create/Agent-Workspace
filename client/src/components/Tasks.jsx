@@ -14,6 +14,7 @@ import {
 import TaskCard from "./TaskCard";
 import TaskModal from "./TaskModal";
 import ShareTaskModal from "./ShareTaskModal";
+import EpicView from "./EpicView";
 import axiosInstance from "../api/axiosInstance";
 import { useAuth } from "../context/AuthContext";
 import "./Tasks.css";
@@ -26,7 +27,7 @@ function Tasks() {
   const [error, setError] = useState("");
 
   // Filters & View State
-  const [viewMode, setViewMode] = useState("board"); // 'board' | 'list'
+  const [viewMode, setViewMode] = useState("board"); // 'board' | 'list' | 'epics'
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("all");
   const [selectedPriority, setSelectedPriority] = useState("all");
@@ -34,6 +35,8 @@ function Tasks() {
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateEpicModal, setShowCreateEpicModal] = useState(false);
+  const [epicRefreshTrigger, setEpicRefreshTrigger] = useState(0);
   const [taskToEdit, setTaskToEdit] = useState(null);
   const [taskToShare, setTaskToShare] = useState(null);
 
@@ -233,8 +236,26 @@ function Tasks() {
               <List size={15} />
               <span className="listscroll">List</span>
             </button>
+            <button
+              type="button"
+              className={`view-switch-btn ${viewMode === "epics" ? "active" : ""}`}
+              onClick={() => setViewMode("epics")}
+            >
+              <Layers size={15} />
+              <span>Epics</span>
+            </button>
           </div>
 
+          {/* Create Epic button */}
+          <button
+            type="button"
+            className="create-task-primary-btn"
+            style={{ background: "#7c3aed" }}
+            onClick={() => setShowCreateEpicModal(true)}
+          >
+            <Plus size={16} />
+            <span>Create Epic</span>
+          </button>
 
           {/* Create button */}
           <button
@@ -372,8 +393,15 @@ function Tasks() {
       {/* ERROR MESSAGE */}
       {error && <div className="task-form-error">{error}</div>}
 
-      {/* KANBAN BOARD VIEW */}
-      {viewMode === "board" ? (
+      {/* EPICS VIEW */}
+      {viewMode === "epics" ? (
+        <EpicView
+          projectId={selectedProjectId}
+          projects={projects}
+          refreshTrigger={epicRefreshTrigger}
+          onOpenCreateEpic={() => setShowCreateEpicModal(true)}
+        />
+      ) : viewMode === "board" ? (
         <section className="kanban-board">
           {columns.map((col) => {
             const colTasks = filteredTasks.filter(
@@ -530,6 +558,19 @@ function Tasks() {
         />
       )}
 
+      {/* CREATE EPIC MODAL */}
+      {showCreateEpicModal && (
+        <CreateEpicModal
+          projects={projects}
+          defaultProjectId={selectedProjectId !== "all" ? selectedProjectId : ""}
+          onClose={() => setShowCreateEpicModal(false)}
+          onEpicCreated={() => {
+            setEpicRefreshTrigger((prev) => prev + 1);
+            setShowCreateEpicModal(false);
+          }}
+        />
+      )}
+
       {/* EDIT TASK MODAL */}
       {taskToEdit && (
         <TaskModal
@@ -549,6 +590,221 @@ function Tasks() {
         />
       )}
     </main>
+  );
+}
+
+/* Helper modal for creating an Epic matching TaskModal styling */
+function CreateEpicModal({
+  projects = [],
+  defaultProjectId = "",
+  onClose,
+  onEpicCreated,
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [projectId, setProjectId] = useState(
+    defaultProjectId || (projects.length > 0 ? projects[0]._id : "")
+  );
+  const [status, setStatus] = useState("todo");
+  const [color, setColor] = useState("#6366f1");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const colorOptions = [
+    { label: "Indigo", hex: "#6366f1" },
+    { label: "Purple", hex: "#8b5cf6" },
+    { label: "Pink", hex: "#ec4899" },
+    { label: "Red", hex: "#ef4444" },
+    { label: "Amber", hex: "#f59e0b" },
+    { label: "Emerald", hex: "#10b981" },
+    { label: "Cyan", hex: "#06b6d4" },
+    { label: "Blue", hex: "#3b82f6" },
+  ];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      setError("Epic title is required.");
+      return;
+    }
+    if (!projectId) {
+      setError("Please select a project for this epic.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const payload = {
+        title: title.trim(),
+        description: description.trim(),
+        projectId,
+        status,
+        color,
+      };
+
+      const res = await axiosInstance.post("/api/epics", payload);
+      if (res.data?.success !== false) {
+        if (onEpicCreated) {
+          onEpicCreated(res.data?.epic || res.data);
+        }
+      } else {
+        throw new Error(res.data?.message || "Failed to create epic");
+      }
+    } catch (err) {
+      console.error("Create epic error:", err);
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to create epic."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="task-modal-overlay"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !loading) {
+          onClose();
+        }
+      }}
+    >
+      <div className="task-modal-content">
+        <div className="task-modal-header">
+          <div>
+            <h2>Create New Epic</h2>
+            <p>Group user stories and track high-level project initiatives</p>
+          </div>
+
+          <button
+            type="button"
+            className="task-modal-close"
+            onClick={onClose}
+            disabled={loading}
+          >
+            ×
+          </button>
+        </div>
+
+        {error && <div className="task-form-error">{error}</div>}
+
+        <form className="task-form" onSubmit={handleSubmit}>
+          <div className="task-form-group">
+            <label>Epic Title *</label>
+            <input
+              type="text"
+              placeholder="e.g. User Authentication & Authorization Flow"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="task-form-row">
+            <div className="task-form-group">
+              <label>Project *</label>
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                required
+              >
+                <option value="" disabled>
+                  Select Project
+                </option>
+                {projects.map((p) => (
+                  <option key={p._id} value={p._id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="task-form-group">
+              <label>Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="in_review">In Review</option>
+                <option value="done">Done</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="task-form-group">
+            <label>Epic Color Theme</label>
+            <div
+              style={{
+                display: "flex",
+                gap: "10px",
+                alignItems: "center",
+                flexWrap: "wrap",
+                marginTop: "4px",
+              }}
+            >
+              {colorOptions.map((c) => (
+                <button
+                  key={c.hex}
+                  type="button"
+                  onClick={() => setColor(c.hex)}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    background: c.hex,
+                    border:
+                      color === c.hex
+                        ? "3px solid #0f172a"
+                        : "2px solid transparent",
+                    cursor: "pointer",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
+                    transform: color === c.hex ? "scale(1.15)" : "scale(1)",
+                    transition: "all 0.15s ease",
+                  }}
+                  title={c.label}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="task-form-group">
+            <label>Description</label>
+            <textarea
+              placeholder="Summary of this epic's scope, deliverables, or objectives..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows="3"
+            />
+          </div>
+
+          <div className="task-modal-actions">
+            <button
+              type="button"
+              className="task-cancel-btn"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="task-submit-btn"
+              disabled={loading || !title.trim()}
+              style={{ background: "#7c3aed" }}
+            >
+              {loading ? "Creating..." : "Create Epic"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 

@@ -25,6 +25,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
+  flex-shrink: 0;
 }
 
 .dashboard-title-wrap {
@@ -153,6 +154,7 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 18px;
+  flex-shrink: 0;
 }
 
 .dashboard-stat-card {
@@ -297,6 +299,7 @@
   box-shadow: 0 10px 30px rgba(13, 21, 39, 0.4);
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .workspace-insight-card::before {
@@ -448,6 +451,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
+  flex-shrink: 0;
 }
 
 .dashboard-chart-card {

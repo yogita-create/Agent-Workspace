@@ -12,6 +12,9 @@ import taskRoutes from "./routes/taskRoutes.js";
 import authRoutes from "./routes/auth.js";
 import organizationRoutes from "./routes/organization.js";
 import inviteRoutes from "./routes/invite.js";
+import epicRoutes from "./routes/epicRoutes.js";
+import storyRoutes from "./routes/storyRoutes.js";
+import boardRoutes from "./routes/board.js";
 
 const app = express();
 
@@ -23,6 +26,9 @@ app.use("/api/organizations", organizationRoutes);
 app.use("/api/invites", inviteRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/tasks", taskRoutes);
+app.use("/api/epics", epicRoutes);
+app.use("/api/stories", storyRoutes);
+app.use("/api/board", boardRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/chat/sessions", chatSessionRoutes);
 app.use("/api/actions", actionRoutes);
