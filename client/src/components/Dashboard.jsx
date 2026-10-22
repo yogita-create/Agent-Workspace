@@ -1,1494 +1,621 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
-  FolderKanban,
-  CheckCircle2,
-  ListTodo,
+  Folder,
+  CheckSquare,
   TrendingUp,
-  CircleDot,
-  Clock3,
-  PauseCircle,
-  Activity,
-  RefreshCw,
   ArrowUpRight,
+  Bell,
+  CheckCircle2,
+  Activity,
   Target,
   Zap,
-  Bell,
-  AlertTriangle,
   Clock,
-  CalendarDays,
+  AlertTriangle,
+  FolderOpen,
+  ArrowRight,
   X,
 } from "lucide-react";
-
+import { getTaskAlerts } from "../utils/alertUtils";
+import axiosInstance from "../api/axiosInstance";
 import "./Dashboard.css";
-
-const API_URL = "http://localhost:5000";
 
 function Dashboard({ onNavigate }) {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
-
   const [loading, setLoading] = useState(true);
-const [lastUpdated, setLastUpdated] = useState(null);
+  const [showNotifPopover, setShowNotifPopover] = useState(false);
+  const [currentTimeStr, setCurrentTimeStr] = useState("");
 
-const [alerts, setAlerts] = useState([]);
-const [alertSummary, setAlertSummary] = useState({
-  total: 0,
-  overdue: 0,
-  dueToday: 0,
-  dueTomorrow: 0,
-  upcoming: 0,
-});
+  const popoverRef = useRef(null);
 
-const [notificationOpen, setNotificationOpen] = useState(false);
-  // =========================================================
-  // LOAD DASHBOARD DATA
-  // =========================================================
-
-  const loadDashboardData = async (showLoader = false) => {
-    try {
-      if (showLoader) {
-        setRefreshing(true);
-      }
-
-      const [projectsResponse, tasksResponse] =
-        await Promise.all([
-          fetch(`${API_URL}/api/projects`),
-          fetch(`${API_URL}/api/tasks`),
-        ]);
-
-      if (!projectsResponse.ok) {
-        throw new Error(
-          `Projects request failed: ${projectsResponse.status}`
-        );
-      }
-
-      if (!tasksResponse.ok) {
-        throw new Error(
-          `Tasks request failed: ${tasksResponse.status}`
-        );
-      }
-
-      const projectsData = await projectsResponse.json();
-      const tasksData = await tasksResponse.json();
-
-      setProjects(
-        projectsData.success
-          ? projectsData.projects || []
-          : []
-      );
-
-      /*
-       * Supports both:
-       *
-       * { success: true, tasks: [...] }
-       *
-       * and
-       *
-       * { success: true, data: [...] }
-       */
-      const loadedTasks =
-        tasksData.tasks ||
-        tasksData.data ||
-        [];
-
-      setTasks(
-        tasksData.success
-          ? loadedTasks
-          : []
-      );
-
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.error(
-        "Dashboard data loading error:",
-        error
-      );
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  // =========================================================
-// LOAD NOTIFICATIONS
-// =========================================================
-
-const loadNotifications = async () => {
-  try {
-    const response = await fetch(
-      `${API_URL}/api/alerts`
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        `Alerts request failed: ${response.status}`
-      );
-    }
-
-    const data = await response.json();
-
-    if (data.success) {
-      setAlerts(data.alerts || []);
-
-      setAlertSummary(
-        data.summary || {
-          total: 0,
-          overdue: 0,
-          dueToday: 0,
-          dueTomorrow: 0,
-          upcoming: 0,
-        }
-      );
-    }
-  } catch (error) {
-    console.error(
-      "Notification loading error:",
-      error
-    );
-  }
-};
-  
-// =========================================================
-// INITIAL LOAD + AUTO REFRESH
-// =========================================================
-
-useEffect(() => {
-  loadDashboardData();
-  loadNotifications();
-
-  const interval = setInterval(() => {
-    loadDashboardData();
-    loadNotifications();
-  }, 10000);
-
-  return () => {
-    clearInterval(interval);
-  };
-}, []);
-  // =========================================================
-  // TASK STATISTICS
-  // =========================================================
-
-  const totalTasks = tasks.length;
-
-  const completedTasks = tasks.filter(
-    (task) => task.status === "done"
-  ).length;
-
-  const inProgressTasks = tasks.filter(
-    (task) => task.status === "in_progress"
-  ).length;
-
-  const todoTasks = tasks.filter(
-    (task) => task.status === "todo"
-  ).length;
-
-  const completionRate =
-    totalTasks === 0
-      ? 0
-      : Math.round(
-          (completedTasks / totalTasks) * 100
-        );
-
-  // =========================================================
-  // PROJECT STATISTICS
-  // =========================================================
-
-  const activeProjects = projects.filter(
-    (project) => project.status === "Active"
-  ).length;
-
-  const completedProjects = projects.filter(
-    (project) => project.status === "Completed"
-  ).length;
-
-  const onHoldProjects = projects.filter(
-    (project) => project.status === "On Hold"
-  ).length;
-
-  // =========================================================
-  // PRIORITY STATISTICS
-  // =========================================================
-
-  const highPriorityTasks = tasks.filter(
-    (task) => task.priority === "high"
-  ).length;
-
-  const mediumPriorityTasks = tasks.filter(
-    (task) => task.priority === "medium"
-  ).length;
-
-  const lowPriorityTasks = tasks.filter(
-    (task) => task.priority === "low"
-  ).length;
-
-  // =========================================================
-  // PROJECT PERFORMANCE
-  // =========================================================
-
-  const projectPerformance = useMemo(() => {
-    return projects.map((project) => {
-      const projectId = String(project._id);
-
-      const projectTasks = tasks.filter(
-        (task) =>
-          String(
-            task.projectId?._id ||
-              task.projectId
-          ) === projectId
-      );
-
-      const total = projectTasks.length;
-
-      const completed = projectTasks.filter(
-        (task) => task.status === "done"
-      ).length;
-
-      const inProgress = projectTasks.filter(
-        (task) => task.status === "in_progress"
-      ).length;
-
-      const todo = projectTasks.filter(
-        (task) => task.status === "todo"
-      ).length;
-
-      const progress =
-        total === 0
-          ? 0
-          : Math.round(
-              (completed / total) * 100
-            );
-
-      const high = projectTasks.filter(
-        (task) => task.priority === "high"
-      ).length;
-
-      const medium = projectTasks.filter(
-        (task) => task.priority === "medium"
-      ).length;
-
-      const low = projectTasks.filter(
-        (task) => task.priority === "low"
-      ).length;
-
-      return {
-        ...project,
-        total,
-        completed,
-        inProgress,
-        todo,
-        progress,
-        high,
-        medium,
-        low,
-      };
-    });
-  }, [projects, tasks]);
-
-  // =========================================================
-  // TOP PROJECT
-  // =========================================================
-
-  const topProject = useMemo(() => {
-    if (projectPerformance.length === 0) {
-      return null;
-    }
-
-    return [...projectPerformance].sort(
-      (a, b) => b.progress - a.progress
-    )[0];
-  }, [projectPerformance]);
-
-  // =========================================================
-  // FORMAT TIME
-  // =========================================================
-
-  const formattedTime = lastUpdated
-    ? lastUpdated.toLocaleTimeString([], {
+  // Time formatter
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const formatted = now.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
-      })
-    : "--:--";
+        hour12: true,
+      });
+      setCurrentTimeStr(formatted);
+    };
+    updateTime();
+  }, []);
 
-  // =========================================================
-  // PROJECT STATUS CLASS
-  // =========================================================
+  // Fetch projects and tasks
+  useEffect(() => {
+    let ignore = false;
 
-  const getProjectStatusClass = (status) => {
-    if (status === "Completed") {
-      return "status-completed";
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [projRes, tasksRes] = await Promise.all([
+          axiosInstance.get("/api/projects"),
+          axiosInstance.get("/api/tasks"),
+        ]);
+
+        const projData = projRes.data;
+        const tasksData = tasksRes.data;
+
+        if (ignore) return;
+
+        if (projData.success) {
+          setProjects(projData.projects || []);
+        }
+        if (tasksData.success) {
+          setTasks(tasksData.tasks || []);
+        }
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  // Close popover on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(e.target) &&
+        !e.target.closest(".notif-bell-btn")
+      ) {
+        setShowNotifPopover(false);
+      }
+    };
+
+    if (showNotifPopover) {
+      document.addEventListener("mousedown", handleClickOutside);
     }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showNotifPopover]);
 
-    if (status === "On Hold") {
-      return "status-hold";
-    }
+  // Calculations
+  const totalProjects = projects.length;
+  const activeProjects = projects.filter(
+    (p) => p.status === "Active" || !p.status
+  ).length;
 
-    return "status-active";
-  };
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter((t) => t.status === "done").length;
+  const inProgressTasks = tasks.filter((t) => t.status === "in_progress").length;
+  const inReviewTasks = tasks.filter((t) => t.status === "in_review").length;
+  const todoTasks = tasks.filter((t) => (t.status || "todo") === "todo").length;
+  const remainingTasks = totalTasks - completedTasks;
 
-  // =========================================================
-  // LOADING STATE
-  // =========================================================
-  // =========================================================
-// NOTIFICATION HELPERS
-// =========================================================
+  const completionPct = totalTasks > 0
+    ? Math.round((completedTasks / totalTasks) * 100)
+    : 0;
 
-const getAlertIcon = (type) => {
-  switch (type) {
-    case "overdue":
-      return <AlertTriangle size={17} />;
+  const todoPct = totalTasks > 0 ? Math.round((todoTasks / totalTasks) * 100) : 0;
+  const inProgressPct = totalTasks > 0
+    ? Math.round(((inProgressTasks + inReviewTasks) / totalTasks) * 100)
+    : 0;
 
-    case "due_today":
-      return <Clock size={17} />;
+  // Priorities count
+  const highPriorityCount = tasks.filter(
+    (t) => t.priority === "high" || t.priority === "urgent"
+  ).length;
+  const mediumPriorityCount = tasks.filter(
+    (t) => t.priority === "medium" || !t.priority
+  ).length;
+  const lowPriorityCount = tasks.filter((t) => t.priority === "low").length;
 
-    case "due_tomorrow":
-      return <CalendarDays size={17} />;
+  // Alerts
+  const alertsData = getTaskAlerts(tasks);
+  const totalAlertsCount = alertsData.totalCount;
 
-    case "upcoming":
-      return <CalendarDays size={17} />;
+  // SVG Gauge calculations
+  const radius = 22;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset =
+    circumference - (completionPct / 100) * circumference;
 
-    default:
-      return <Bell size={17} />;
-  }
-};
-
-const getAlertClass = (severity) => {
-  switch (severity) {
-    case "danger":
-      return "notification-danger";
-
-    case "warning":
-      return "notification-warning";
-
-    case "info":
-      return "notification-info";
-
-    default:
-      return "notification-info";
-  }
-};
-  if (loading) {
-    return (
-      <div className="dashboard">
-        <div className="dashboard-loading">
-          <RefreshCw
-            size={22}
-            className="loading-spin"
-          />
-
-          <span>
-            Loading workspace analytics...
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  // =========================================================
-  // UI
-  // =========================================================
+  // Big Dial calculations
+  const dialRadius = 38;
+  const dialCircumference = 2 * Math.PI * dialRadius;
+  const dialStrokeDashoffset =
+    dialCircumference - (completionPct / 100) * dialCircumference;
 
   return (
     <div className="dashboard">
-
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
-
-      <div className="dashboard-header">
-
-        <div>
+      {/* ==========================================
+          HEADER (IMAGE 1)
+      ========================================== */}
+      <header className="dashboard-header">
+        <div className="dashboard-title-wrap">
           <div className="dashboard-title-row">
-
             <h1>Main Workspace</h1>
-
             <span className="live-badge">
-              <span className="live-dot"></span>
+              <span className="live-dot" />
               Live
             </span>
-
           </div>
-
-          <p>
-            Workspace performance overview
-          </p>
+          <p>Workspace performance overview</p>
         </div>
 
         <div className="dashboard-header-right">
-
-          <span className="updated-text">
-            Updated {formattedTime}
+          <span className="updated-time-text">
+            Updated {currentTimeStr || "07:39 am"}
           </span>
 
-        {/* NOTIFICATION BUTTON */}
-
-<div className="notification-wrapper">
-
-  <button
-    type="button"
-    className={`dashboard-notification-button ${
-      notificationOpen
-        ? "notification-active"
-        : ""
-    }`}
-    onClick={() =>
-      setNotificationOpen(
-        (previous) => !previous
-      )
-    }
-    title="Notifications"
-    aria-label="Notifications"
-  >
-    <Bell size={20} />
-
-    {alertSummary.total > 0 && (
-      <span className="notification-badge">
-        {alertSummary.total > 99
-          ? "99+"
-          : alertSummary.total}
-      </span>
-    )}
-  </button>
-
-
-  {/* =========================================
-      NOTIFICATION DROPDOWN
-  ========================================= */}
-
-  {notificationOpen && (
-    <div className="notification-dropdown">
-
-      {/* HEADER */}
-
-      <div className="notification-dropdown-header">
-
-        <div>
-          <h3>Notifications</h3>
-
-          <p>
-            Recent task alerts
-          </p>
+          {/* NOTIFICATION BELL BUTTON */}
+          <button
+            type="button"
+            className={`notif-bell-btn ${showNotifPopover ? "active" : ""}`}
+            onClick={() => setShowNotifPopover((prev) => !prev)}
+            title="View Notifications"
+          >
+            <Bell size={20} />
+            {totalAlertsCount > 0 && (
+              <span className="notif-badge-pill">{totalAlertsCount}</span>
+            )}
+          </button>
         </div>
+      </header>
 
-        <button
-          type="button"
-          className="notification-close"
-          onClick={() =>
-            setNotificationOpen(false)
-          }
-        >
-          <X size={17} />
-        </button>
-
-      </div>
-
-
-      {/* SUMMARY */}
-
-      <div className="notification-summary">
-
-        <span>
-          {alertSummary.total} active
-        </span>
-
-        {alertSummary.overdue > 0 && (
-          <span className="summary-danger">
-            {alertSummary.overdue} overdue
-          </span>
-        )}
-
-      </div>
-
-
-      {/* ALERT LIST */}
-
-      <div className="notification-list">
-
-        {alerts.length === 0 ? (
-
-          <div className="notification-empty">
-
-            <div className="notification-empty-icon">
-              <Bell size={20} />
+      {/* ==========================================
+          SHORT NOTIFICATION DROPDOWN (IMAGE 2)
+      ========================================== */}
+      {showNotifPopover && (
+        <div className="notif-popover-dropdown" ref={popoverRef}>
+          <div className="notif-popover-header">
+            <div className="notif-header-text">
+              <h3>Notifications</h3>
+              <p>Recent task alerts</p>
             </div>
-
-            <strong>
-              You're all caught up
-            </strong>
-
-            <span>
-              No active task alerts.
-            </span>
-
+            <button
+              type="button"
+              className="notif-close-btn"
+              onClick={() => setShowNotifPopover(false)}
+            >
+              <X size={16} />
+            </button>
           </div>
 
-        ) : (
+          <div className="notif-summary-pills">
+            <span className="pill-active-count">
+              {alertsData.activeAlertsCount} active
+            </span>
+            <span className="pill-overdue-count">
+              {alertsData.overdueCount} overdue
+            </span>
+          </div>
 
-          alerts.slice(0, 5).map((alert) => (
+          <div className="notif-items-list">
+            {alertsData.allAlerts.length === 0 ? (
+              <div className="notif-empty-state">
+                🎉 No pending alerts! All tasks are on schedule.
+              </div>
+            ) : (
+              alertsData.allAlerts.slice(0, 5).map((alert, idx) => (
+                <div
+                  key={`${alert.task._id}-${idx}`}
+                  className="notif-item-card"
+                  onClick={() => {
+                    setShowNotifPopover(false);
+                    onNavigate("alerts");
+                  }}
+                >
+                  <div
+                    className={`notif-alert-icon-box ${
+                      alert.type === "overdue"
+                        ? "icon-overdue-bg"
+                        : alert.type === "due_today"
+                        ? "icon-today-bg"
+                        : "icon-tomorrow-bg"
+                    }`}
+                  >
+                    {alert.type === "overdue" ? (
+                      <AlertTriangle size={16} />
+                    ) : (
+                      <Clock size={16} />
+                    )}
+                  </div>
 
-            <div
-              key={`${alert.id}-${alert.type}`}
-              className={`notification-item ${
-                getAlertClass(alert.severity)
-              }`}
+                  <div className="notif-item-content">
+                    <h4 className="notif-item-title">
+                      {alert.type === "overdue"
+                        ? "Task Overdue"
+                        : alert.type === "due_today"
+                        ? "Due Today"
+                        : alert.type === "due_tomorrow"
+                        ? "Due Tomorrow"
+                        : "Upcoming Due"}
+                    </h4>
+                    <p className="notif-item-desc">{alert.message}</p>
+                    <span className="notif-item-project">
+                      <FolderOpen size={11} />
+                      {alert.projectName}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="notif-footer-action">
+            <button
+              type="button"
+              className="view-all-alerts-btn"
+              onClick={() => {
+                setShowNotifPopover(false);
+                onNavigate("alerts");
+              }}
             >
-
-              <div className="notification-item-icon">
-                {getAlertIcon(alert.type)}
-              </div>
-
-              <div className="notification-item-content">
-
-                <strong>
-                  {alert.title}
-                </strong>
-
-                <p>
-                  {alert.message}
-                </p>
-
-                {alert.project && (
-                  <span className="notification-project">
-                    {alert.project.name}
-                  </span>
-                )}
-
-              </div>
-
-            </div>
-
-          ))
-
-          
-        )}
-
-      </div>
-
-
-      {/* FOOTER */}
-
-      {alerts.length > 5 && (
-        <div className="notification-footer">
-          <span>
-            Showing 5 of {alerts.length} alerts
-          </span>
+              View all alerts in Alerts Center <ArrowRight size={13} />
+            </button>
+          </div>
         </div>
       )}
 
-    </div>
-  )}
+      {/* ==========================================
+          TOP 4 METRIC CARDS (IMAGE 1)
+      ========================================== */}
+      <section className="dashboard-stats-grid">
+        {/* Total Projects */}
+        <div
+          className="dashboard-stat-card"
+          onClick={() => onNavigate("projects")}
+        >
+          <div className="stat-card-top-row">
+            <div className="stat-card-icon-box icon-blue">
+              <Folder size={20} />
+            </div>
+            <ArrowUpRight size={18} className="stat-arrow-icon" />
+          </div>
 
-</div>
-
+          <div className="stat-card-main-content">
+            <div>
+              <p className="stat-card-label">Total Projects</p>
+              <h2 className="stat-card-value">{totalProjects}</h2>
+              <p className="stat-card-subtext">{activeProjects} active</p>
+            </div>
+          </div>
         </div>
 
-      </div>
-
-      {/* =====================================================
-          KPI CARDS
-      ===================================================== */}
-
-      <div className="stats-grid">
-
-        {/* PROJECTS */}
-
-        <div className="stat-card">
-
-          <div className="stat-icon projects-icon">
-            <FolderKanban size={22} />
+        {/* Total Tasks */}
+        <div
+          className="dashboard-stat-card"
+          onClick={() => onNavigate("tasks")}
+        >
+          <div className="stat-card-top-row">
+            <div className="stat-card-icon-box icon-cyan">
+              <CheckSquare size={20} />
+            </div>
+            <ArrowUpRight size={18} className="stat-arrow-icon" />
           </div>
 
-          <div className="stat-content">
-
-            <span className="stat-label">
-              Total Projects
-            </span>
-
-            <strong>
-              {projects.length}
-            </strong>
-
-            <small>
-              {activeProjects} active
-            </small>
-
+          <div className="stat-card-main-content">
+            <div>
+              <p className="stat-card-label">Total Tasks</p>
+              <h2 className="stat-card-value">{totalTasks}</h2>
+              <p className="stat-card-subtext">{remainingTasks} remaining</p>
+            </div>
           </div>
-
-          <ArrowUpRight
-            size={18}
-            className="stat-arrow"
-          />
-
         </div>
 
-        {/* TASKS */}
-
-        <div className="stat-card">
-
-          <div className="stat-icon tasks-icon">
-            <ListTodo size={22} />
+        {/* Completed Tasks */}
+        <div
+          className="dashboard-stat-card"
+          onClick={() => onNavigate("tasks")}
+        >
+          <div className="stat-card-top-row">
+            <div className="stat-card-icon-box icon-green">
+              <CheckCircle2 size={20} />
+            </div>
+            <ArrowUpRight size={18} className="stat-arrow-icon" />
           </div>
 
-          <div className="stat-content">
-
-            <span className="stat-label">
-              Total Tasks
-            </span>
-
-            <strong>
-              {totalTasks}
-            </strong>
-
-            <small>
-              {todoTasks} remaining
-            </small>
-
+          <div className="stat-card-main-content">
+            <div>
+              <p className="stat-card-label">Completed Tasks</p>
+              <h2 className="stat-card-value">{completedTasks}</h2>
+              <p className="stat-card-subtext">{completionPct}% completion</p>
+            </div>
           </div>
-
-          <ArrowUpRight
-            size={18}
-            className="stat-arrow"
-          />
-
         </div>
 
-        {/* COMPLETED */}
-
-        <div className="stat-card">
-
-          <div className="stat-icon completed-icon">
-            <CheckCircle2 size={22} />
+        {/* Workspace Progress */}
+        <div
+          className="dashboard-stat-card"
+          onClick={() => onNavigate("tasks")}
+        >
+          <div className="stat-card-top-row">
+            <div className="stat-card-icon-box icon-amber">
+              <TrendingUp size={20} />
+            </div>
           </div>
 
-          <div className="stat-content">
-
-            <span className="stat-label">
-              Completed Tasks
-            </span>
-
-            <strong>
-              {completedTasks}
-            </strong>
-
-            <small>
-              {completionRate}% completion
-            </small>
-
-          </div>
-
-          <ArrowUpRight
-            size={18}
-            className="stat-arrow"
-          />
-
-        </div>
-
-        {/* COMPLETION */}
-
-        <div className="stat-card">
-
-          <div className="stat-icon progress-icon">
-            <TrendingUp size={22} />
-          </div>
-
-          <div className="stat-content">
-
-            <span className="stat-label">
-              Workspace Progress
-            </span>
-
-            <strong>
-              {completionRate}%
-            </strong>
-
-            <small>
-              Overall completion
-            </small>
-
-          </div>
-
-          <div
-            className="mini-progress-ring"
-            style={{
-              "--progress": `${completionRate * 3.6}deg`,
-            }}
-          >
-            <span>
-              {completionRate}
-            </span>
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* =====================================================
-          DARK PERFORMANCE PANEL
-      ===================================================== */}
-
-      <section className="performance-panel">
-
-        <div className="performance-panel-top">
-
-          <div>
-
-            <span className="panel-eyebrow">
-              WORKSPACE INSIGHT
-            </span>
-
-            <h2>
-              Your workspace at a glance
-            </h2>
-
-            <p>
-              Track execution, workload and
-              project momentum in one place.
-            </p>
-
-          </div>
-
-          <div className="panel-main-progress">
-
-            <div
-              className="large-progress-ring"
-              style={{
-                "--progress": `${completionRate * 3.6}deg`,
-              }}
-            >
-              <div>
-                <strong>
-                  {completionRate}%
-                </strong>
-
-                <span>
-                  Complete
-                </span>
-              </div>
+          <div className="stat-card-main-content">
+            <div>
+              <p className="stat-card-label">Workspace Progress</p>
+              <h2 className="stat-card-value">{completionPct}%</h2>
+              <p className="stat-card-subtext">Overall completion</p>
             </div>
 
+            {/* Circular Gauge */}
+            <div className="stat-card-gauge-wrap">
+              <svg width="54" height="54" className="gauge-svg">
+                <circle
+                  className="gauge-bg"
+                  strokeWidth="5"
+                  fill="transparent"
+                  r={radius}
+                  cx="27"
+                  cy="27"
+                />
+                <circle
+                  className="gauge-fill"
+                  strokeWidth="5"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  fill="transparent"
+                  r={radius}
+                  cx="27"
+                  cy="27"
+                />
+              </svg>
+              <span className="gauge-center-text">{completionPct}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ==========================================
+          DARK WORKSPACE INSIGHT CARD (IMAGE 1)
+      ========================================== */}
+      <section className="workspace-insight-card">
+        <div className="insight-top-section">
+          <div className="insight-text-wrap">
+            <span className="insight-pill-tag">WORKSPACE INSIGHT</span>
+            <h2>Your workspace at a glance</h2>
+            <p>
+              Track execution, workload and project momentum in one place.
+            </p>
           </div>
 
+          {/* Completion Dial */}
+          <div className="insight-dial-wrap">
+            <svg width="90" height="90" className="dial-svg">
+              <circle
+                className="dial-bg"
+                strokeWidth="7"
+                fill="transparent"
+                r={dialRadius}
+                cx="45"
+                cy="45"
+              />
+              <circle
+                className="dial-fill"
+                strokeWidth="7"
+                strokeDasharray={dialCircumference}
+                strokeDashoffset={dialStrokeDashoffset}
+                fill="transparent"
+                r={dialRadius}
+                cx="45"
+                cy="45"
+              />
+            </svg>
+            <div className="dial-center-content">
+              <span className="dial-number">{completionPct}%</span>
+              <span className="dial-label">Complete</span>
+            </div>
+          </div>
         </div>
 
-        <div className="panel-metrics">
-
-          <div className="panel-metric">
-
-            <div className="panel-metric-icon">
+        {/* Bottom 4 Icon Metrics */}
+        <div className="insight-bottom-metrics">
+          <div className="insight-metric-item">
+            <div className="insight-metric-icon" style={{ color: "#38bdf8" }}>
               <CheckCircle2 size={18} />
             </div>
-
-            <div>
-              <span>Completed</span>
-              <strong>
-                {completedTasks}
-              </strong>
+            <div className="metric-info">
+              <span className="metric-label">Completed</span>
+              <span className="metric-value">{completedTasks}</span>
             </div>
-
           </div>
 
-          <div className="panel-metric">
-
-            <div className="panel-metric-icon">
+          <div className="insight-metric-item">
+            <div className="insight-metric-icon" style={{ color: "#818cf8" }}>
               <Activity size={18} />
             </div>
-
-            <div>
-              <span>In Progress</span>
-              <strong>
-                {inProgressTasks}
-              </strong>
+            <div className="metric-info">
+              <span className="metric-label">In Progress</span>
+              <span className="metric-value">{inProgressTasks}</span>
             </div>
-
           </div>
 
-          <div className="panel-metric">
-
-            <div className="panel-metric-icon">
+          <div className="insight-metric-item">
+            <div className="insight-metric-icon" style={{ color: "#a78bfa" }}>
               <Target size={18} />
             </div>
-
-            <div>
-              <span>To Do</span>
-              <strong>
-                {todoTasks}
-              </strong>
+            <div className="metric-info">
+              <span className="metric-label">To Do</span>
+              <span className="metric-value">{todoTasks}</span>
             </div>
-
           </div>
 
-          <div className="panel-metric">
-
-            <div className="panel-metric-icon">
+          <div className="insight-metric-item">
+            <div className="insight-metric-icon" style={{ color: "#f43f5e" }}>
               <Zap size={18} />
             </div>
-
-            <div>
-              <span>High Priority</span>
-              <strong>
-                {highPriorityTasks}
-              </strong>
+            <div className="metric-info">
+              <span className="metric-label">High Priority</span>
+              <span className="metric-value">{highPriorityCount}</span>
             </div>
-
           </div>
-
         </div>
-
       </section>
 
-      {/* =====================================================
-          MAIN ANALYTICS GRID
-      ===================================================== */}
-
-      <div className="analytics-grid">
-
-        {/* ===================================================
-            TASK PROGRESS
-        =================================================== */}
-
-        <section className="analytics-card">
-
-          <div className="analytics-card-header">
-
-            <div>
-              <h2>Task Progress</h2>
-
-              <p>
-                Current workload distribution
-              </p>
+      {/* ==========================================
+          BOTTOM 2 CHARTS GRID (IMAGE 1)
+      ========================================== */}
+      <section className="dashboard-charts-grid">
+        {/* Task Progress */}
+        <div className="dashboard-chart-card">
+          <div className="chart-card-header">
+            <div className="chart-title-wrap">
+              <h3>Task Progress</h3>
+              <p>Current workload distribution</p>
             </div>
-
-            <div className="analytics-header-icon">
-              <Activity size={19} />
+            <div className="chart-header-icon" style={{ color: "#3b82f6", background: "#eff6ff" }}>
+              <Activity size={18} />
             </div>
-
           </div>
 
-          <div className="task-progress-list">
-
-            {/* TODO */}
-
-            <div className="task-progress-item">
-
-              <div className="task-progress-title">
-
-                <div className="progress-label">
-
-                  <span className="status-dot todo-dot"></span>
-
-                  <span>
-                    To Do
-                  </span>
-
-                </div>
-
-                <strong>
-                  {todoTasks}
-                </strong>
-
+          <div className="chart-rows-list">
+            {/* To Do */}
+            <div className="progress-item-row">
+              <div className="progress-label-wrap">
+                <span className="dot-indicator dot-gray" />
+                <span>To Do</span>
               </div>
-
-              <div className="progress-track">
-
+              <span className="progress-item-count">{todoTasks}</span>
+              <div className="progress-bar-track">
                 <div
-                  className="progress-fill todo-fill"
-                  style={{
-                    width: `${
-                      totalTasks
-                        ? (todoTasks /
-                            totalTasks) *
-                          100
-                        : 0
-                    }%`,
-                  }}
+                  className="progress-bar-fill bar-gray"
+                  style={{ width: `${todoPct}%` }}
                 />
-
               </div>
-
-              <span className="progress-percentage">
-
-                {totalTasks
-                  ? Math.round(
-                      (todoTasks /
-                        totalTasks) *
-                        100
-                    )
-                  : 0}
-                %
-
-              </span>
-
+              <span className="progress-item-pct">{todoPct}%</span>
             </div>
 
-            {/* IN PROGRESS */}
-
-            <div className="task-progress-item">
-
-              <div className="task-progress-title">
-
-                <div className="progress-label">
-
-                  <span className="status-dot progress-dot"></span>
-
-                  <span>
-                    In Progress
-                  </span>
-
-                </div>
-
-                <strong>
-                  {inProgressTasks}
-                </strong>
-
+            {/* In Progress */}
+            <div className="progress-item-row">
+              <div className="progress-label-wrap">
+                <span className="dot-indicator dot-blue" />
+                <span>In Progress</span>
               </div>
-
-              <div className="progress-track">
-
+              <span className="progress-item-count">{inProgressTasks}</span>
+              <div className="progress-bar-track">
                 <div
-                  className="progress-fill progress-fill-blue"
-                  style={{
-                    width: `${
-                      totalTasks
-                        ? (inProgressTasks /
-                            totalTasks) *
-                          100
-                        : 0
-                    }%`,
-                  }}
+                  className="progress-bar-fill bar-blue"
+                  style={{ width: `${inProgressPct}%` }}
                 />
-
               </div>
-
-              <span className="progress-percentage">
-
-                {totalTasks
-                  ? Math.round(
-                      (inProgressTasks /
-                        totalTasks) *
-                        100
-                    )
-                  : 0}
-                %
-
-              </span>
-
+              <span className="progress-item-pct">{inProgressPct}%</span>
             </div>
 
-            {/* COMPLETED */}
-
-            <div className="task-progress-item">
-
-              <div className="task-progress-title">
-
-                <div className="progress-label">
-
-                  <span className="status-dot completed-dot"></span>
-
-                  <span>
-                    Completed
-                  </span>
-
-                </div>
-
-                <strong>
-                  {completedTasks}
-                </strong>
-
+            {/* Completed */}
+            <div className="progress-item-row">
+              <div className="progress-label-wrap">
+                <span className="dot-indicator dot-green" />
+                <span>Completed</span>
               </div>
-
-              <div className="progress-track">
-
+              <span className="progress-item-count">{completedTasks}</span>
+              <div className="progress-bar-track">
                 <div
-                  className="progress-fill completed-fill"
-                  style={{
-                    width: `${
-                      totalTasks
-                        ? (completedTasks /
-                            totalTasks) *
-                          100
-                        : 0
-                    }%`,
-                  }}
+                  className="progress-bar-fill bar-green"
+                  style={{ width: `${completionPct}%` }}
                 />
-
               </div>
-
-              <span className="progress-percentage">
-
-                {completionRate}%
-
-              </span>
-
+              <span className="progress-item-pct">{completionPct}%</span>
             </div>
-
           </div>
-
-        </section>
-
-        {/* ===================================================
-            PRIORITY
-        =================================================== */}
-
-        <section className="analytics-card">
-
-          <div className="analytics-card-header">
-
-            <div>
-              <h2>Task Priority</h2>
-
-              <p>
-                Current workload by priority
-              </p>
-            </div>
-
-            <div className="analytics-header-icon">
-              <Target size={19} />
-            </div>
-
-          </div>
-
-          <div className="priority-list">
-
-            {/* HIGH */}
-
-            <div className="priority-row">
-
-              <div className="priority-top">
-
-                <div className="priority-name">
-
-                  <span className="priority-dot high"></span>
-
-                  <span>
-                    High
-                  </span>
-
-                </div>
-
-                <strong>
-                  {highPriorityTasks}
-                </strong>
-
-              </div>
-
-              <div className="priority-track">
-
-                <div
-                  className="priority-fill high-fill"
-                  style={{
-                    width: `${
-                      totalTasks
-                        ? (highPriorityTasks /
-                            totalTasks) *
-                          100
-                        : 0
-                    }%`,
-                  }}
-                />
-
-              </div>
-
-            </div>
-
-            {/* MEDIUM */}
-
-            <div className="priority-row">
-
-              <div className="priority-top">
-
-                <div className="priority-name">
-
-                  <span className="priority-dot medium"></span>
-
-                  <span>
-                    Medium
-                  </span>
-
-                </div>
-
-                <strong>
-                  {mediumPriorityTasks}
-                </strong>
-
-              </div>
-
-              <div className="priority-track">
-
-                <div
-                  className="priority-fill medium-fill"
-                  style={{
-                    width: `${
-                      totalTasks
-                        ? (mediumPriorityTasks /
-                            totalTasks) *
-                          100
-                        : 0
-                    }%`,
-                  }}
-                />
-
-              </div>
-
-            </div>
-
-            {/* LOW */}
-
-            <div className="priority-row">
-
-              <div className="priority-top">
-
-                <div className="priority-name">
-
-                  <span className="priority-dot low"></span>
-
-                  <span>
-                    Low
-                  </span>
-
-                </div>
-
-                <strong>
-                  {lowPriorityTasks}
-                </strong>
-
-              </div>
-
-              <div className="priority-track">
-
-                <div
-                  className="priority-fill low-fill"
-                  style={{
-                    width: `${
-                      totalTasks
-                        ? (lowPriorityTasks /
-                            totalTasks) *
-                          100
-                        : 0
-                    }%`,
-                  }}
-                />
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </section>
-
-      </div>
-
-      {/* =====================================================
-          PROJECT PERFORMANCE
-      ===================================================== */}
-
-      <section className="projects-section">
-
-        <div className="projects-section-header">
-
-          <div>
-
-            <span className="section-eyebrow">
-              PROJECT PORTFOLIO
-            </span>
-
-            <h2>
-              Project Performance
-            </h2>
-
-            <p>
-              See how each project is progressing
-              based on completed work.
-            </p>
-
-          </div>
-
-          <div className="project-summary">
-
-            <div>
-              <strong>
-                {activeProjects}
-              </strong>
-
-              <span>
-                Active
-              </span>
-            </div>
-
-            <div>
-              <strong>
-                {completedProjects}
-              </strong>
-
-              <span>
-                Completed
-              </span>
-            </div>
-
-            <div>
-              <strong>
-                {onHoldProjects}
-              </strong>
-
-              <span>
-                On Hold
-              </span>
-            </div>
-
-          </div>
-
         </div>
 
-        {projectPerformance.length === 0 ? (
-
-          <div className="empty-projects">
-
-            <FolderKanban size={30} />
-
-            <h3>
-              No projects yet
-            </h3>
-
-            <p>
-              Create a project to start
-              tracking workspace performance.
-            </p>
-
+        {/* Task Priority */}
+        <div className="dashboard-chart-card">
+          <div className="chart-card-header">
+            <div className="chart-title-wrap">
+              <h3>Task Priority</h3>
+              <p>Current workload by priority</p>
+            </div>
+            <div className="chart-header-icon" style={{ color: "#f59e0b", background: "#fef3c7" }}>
+              <Target size={18} />
+            </div>
           </div>
 
-        ) : (
-
-          <div className="project-cards">
-
-            {projectPerformance.map(
-              (project) => (
-
+          <div className="chart-rows-list">
+            {/* High */}
+            <div className="progress-item-row">
+              <div className="progress-label-wrap">
+                <span className="dot-indicator dot-red" />
+                <span>High</span>
+              </div>
+              <div className="progress-bar-track">
                 <div
-                  className="project-card"
-                  key={project._id}
-                >
+                  className="progress-bar-fill bar-red"
+                  style={{
+                    width: totalTasks > 0
+                      ? `${Math.round((highPriorityCount / totalTasks) * 100)}%`
+                      : "0%",
+                  }}
+                />
+              </div>
+              <span className="progress-item-count">{highPriorityCount}</span>
+            </div>
 
-                  {/* PROJECT HEADER */}
+            {/* Medium */}
+            <div className="progress-item-row">
+              <div className="progress-label-wrap">
+                <span className="dot-indicator dot-orange" />
+                <span>Medium</span>
+              </div>
+              <div className="progress-bar-track">
+                <div
+                  className="progress-bar-fill bar-orange"
+                  style={{
+                    width: totalTasks > 0
+                      ? `${Math.round((mediumPriorityCount / totalTasks) * 100)}%`
+                      : "0%",
+                  }}
+                />
+              </div>
+              <span className="progress-item-count">{mediumPriorityCount}</span>
+            </div>
 
-                  <div className="project-card-header">
-
-                    <div className="project-icon">
-                      <FolderKanban size={20} />
-                    </div>
-
-                    <div className="project-heading">
-
-                      <h3>
-                        {project.name}
-                      </h3>
-
-                      <span
-                        className={`project-status ${getProjectStatusClass(
-                          project.status
-                        )}`}
-                      >
-                        {project.status}
-                      </span>
-
-                    </div>
-
-                  </div>
-
-                  {/* PROGRESS */}
-
-                  <div className="project-progress">
-
-                    <div className="project-progress-top">
-
-                      <span>
-                        Progress
-                      </span>
-
-                      <strong>
-                        {project.progress}%
-                      </strong>
-
-                    </div>
-
-                    <div className="project-progress-track">
-
-                      <div
-                        className="project-progress-fill"
-                        style={{
-                          width: `${project.progress}%`,
-                        }}
-                      />
-
-                    </div>
-
-                  </div>
-
-                  {/* TASK BREAKDOWN */}
-
-                  <div className="project-task-summary">
-
-                    <div>
-                      <span>
-                        Tasks
-                      </span>
-
-                      <strong>
-                        {project.total}
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Done
-                      </span>
-
-                      <strong>
-                        {project.completed}
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Active
-                      </span>
-
-                      <strong>
-                        {project.inProgress}
-                      </strong>
-                    </div>
-
-                  </div>
-
-                  {/* MINI STATUS BAR */}
-
-                  <div className="project-status-bar">
-
-                    <div
-                      className="project-todo-segment"
-                      style={{
-                        width: `${
-                          project.total
-                            ? (project.todo /
-                                project.total) *
-                              100
-                            : 0
-                        }%`,
-                      }}
-                    />
-
-                    <div
-                      className="project-progress-segment"
-                      style={{
-                        width: `${
-                          project.total
-                            ? (project.inProgress /
-                                project.total) *
-                              100
-                            : 0
-                        }%`,
-                      }}
-                    />
-
-                    <div
-                      className="project-completed-segment"
-                      style={{
-                        width: `${
-                          project.total
-                            ? (project.completed /
-                                project.total) *
-                              100
-                            : 0
-                        }%`,
-                      }}
-                    />
-
-                  </div>
-
-                  {/* PRIORITY */}
-
-                  <div className="project-priority">
-
-                    <span>
-                      Priority
-                    </span>
-
-                    <div className="priority-mini">
-
-                      {project.high > 0 && (
-                        <span className="mini-priority high-mini">
-                          {project.high} High
-                        </span>
-                      )}
-
-                      {project.medium > 0 && (
-                        <span className="mini-priority medium-mini">
-                          {project.medium} Medium
-                        </span>
-                      )}
-
-                      {project.low > 0 && (
-                        <span className="mini-priority low-mini">
-                          {project.low} Low
-                        </span>
-                      )}
-
-                      {project.total === 0 && (
-                        <span className="no-task-text">
-                          No tasks
-                        </span>
-                      )}
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-              )
-            )}
-
+            {/* Low */}
+            <div className="progress-item-row">
+              <div className="progress-label-wrap">
+                <span className="dot-indicator dot-green" />
+                <span>Low</span>
+              </div>
+              <div className="progress-bar-track">
+                <div
+                  className="progress-bar-fill bar-green"
+                  style={{
+                    width: totalTasks > 0
+                      ? `${Math.round((lowPriorityCount / totalTasks) * 100)}%`
+                      : "0%",
+                  }}
+                />
+              </div>
+              <span className="progress-item-count">{lowPriorityCount}</span>
+            </div>
           </div>
-
-        )}
-
+        </div>
       </section>
-
-      {/* =====================================================
-          BOTTOM INSIGHT
-      ===================================================== */}
-
-      <section className="workspace-insight">
-
-        <div className="insight-icon">
-          <TrendingUp size={23} />
-        </div>
-
-        <div className="insight-content">
-
-          <span>
-            WORKSPACE MOMENTUM
-          </span>
-
-          <h3>
-
-            {topProject
-              ? `${topProject.name} is currently your strongest performing project.`
-              : "Start your first project to build workspace momentum."}
-
-          </h3>
-
-          <p>
-
-            {topProject
-              ? `${topProject.completed} of ${topProject.total} tasks are completed, giving this project a ${topProject.progress}% completion rate.`
-              : "Projects, tasks and AI actions will appear here as your workspace grows."}
-
-          </p>
-
-        </div>
-
-      </section>
-
     </div>
   );
 }

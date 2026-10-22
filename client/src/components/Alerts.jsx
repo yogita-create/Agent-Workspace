@@ -1,471 +1,292 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
-  AlertCircle,
   Bell,
-  CalendarClock,
-  CheckCircle2,
+  AlertCircle,
   Clock,
-  RefreshCw,
+  Calendar,
+  AlertTriangle,
+  FolderOpen,
+  CheckCircle2,
+  User,
+  ArrowRight,
 } from "lucide-react";
-
+import { getTaskAlerts } from "../utils/alertUtils";
+import axiosInstance from "../api/axiosInstance";
 import "./Alerts.css";
 
-const API_URL = "http://localhost:5000";
-
-function Alerts() {
-  const [alerts, setAlerts] = useState([]);
-  const [summary, setSummary] = useState({
-    total: 0,
-    overdue: 0,
-    dueToday: 0,
-    dueTomorrow: 0,
-    upcoming: 0,
-  });
-
+function Alerts({ onNavigate }) {
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState("all"); // 'all' | 'overdue' | 'due_today' | 'due_tomorrow' | 'upcoming'
 
-  // ==========================================
-  // LOAD ALERTS
-  // ==========================================
-
-  const loadAlerts = async () => {
+  const fetchTasks = async () => {
     try {
       setLoading(true);
-      setError("");
-
-      const response = await fetch(
-        `${API_URL}/api/alerts`
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to load alerts: ${response.status}`
-        );
+      const res = await axiosInstance.get("/api/tasks");
+      const data = res.data;
+      if (data.success) {
+        setTasks(data.tasks || []);
       }
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(
-          data.message || "Failed to load alerts"
-        );
-      }
-
-      setAlerts(data.alerts || []);
-
-      setSummary(
-        data.summary || {
-          total: 0,
-          overdue: 0,
-          dueToday: 0,
-          dueTomorrow: 0,
-          upcoming: 0,
-        }
-      );
-    } catch (error) {
-      console.error(
-        "Load alerts error:",
-        error
-      );
-
-      setError(
-        "Unable to load alerts. Please try again."
-      );
+    } catch (err) {
+      console.error("Load alerts tasks error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // ==========================================
-  // INITIAL LOAD
-  // ==========================================
-
   useEffect(() => {
-    loadAlerts();
+    fetchTasks();
   }, []);
 
-  // ==========================================
-  // FORMAT DATE
-  // ==========================================
-
-  const formatDate = (date) => {
-    if (!date) return "No deadline";
-
-    return new Date(date).toLocaleDateString(
-      "en-IN",
-      {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }
-    );
-  };
-
-  // ==========================================
-  // GET ALERT ICON
-  // ==========================================
-
-  const getAlertIcon = (type) => {
-    switch (type) {
-      case "overdue":
-        return <AlertCircle size={22} />;
-
-      case "due_today":
-        return <Clock size={22} />;
-
-      case "due_tomorrow":
-        return <CalendarClock size={22} />;
-
-      case "upcoming":
-        return <Bell size={22} />;
-
-      default:
-        return <Bell size={22} />;
+  const handleMarkAsDone = async (taskId) => {
+    try {
+      setTasks((prev) =>
+        prev.map((t) => (t._id === taskId ? { ...t, status: "done" } : t))
+      );
+      await axiosInstance.put(`/api/tasks/${taskId}`, { status: "done" });
+    } catch (err) {
+      console.error("Mark task as done error:", err);
+      fetchTasks();
     }
   };
 
-  // ==========================================
-  // GET ALERT LABEL
-  // ==========================================
+  const alertsData = useMemo(() => {
+    return getTaskAlerts(tasks);
+  }, [tasks]);
 
-  const getAlertLabel = (type) => {
-    switch (type) {
-      case "overdue":
-        return "Overdue";
-
-      case "due_today":
-        return "Due Today";
-
-      case "due_tomorrow":
-        return "Due Tomorrow";
-
-      case "upcoming":
-        return "Upcoming";
-
-      default:
-        return "Notification";
-    }
-  };
-
-  // ==========================================
-  // GET PRIORITY CLASS
-  // ==========================================
-
-  const getPriorityClass = (priority) => {
-    switch (priority) {
-      case "high":
-        return "priority-high";
-
-      case "medium":
-        return "priority-medium";
-
-      case "low":
-        return "priority-low";
-
-      default:
-        return "";
-    }
-  };
-
-  // ==========================================
-  // RENDER
-  // ==========================================
+  const displayedAlerts = useMemo(() => {
+    if (selectedFilter === "overdue") return alertsData.overdue;
+    if (selectedFilter === "due_today") return alertsData.dueToday;
+    if (selectedFilter === "due_tomorrow") return alertsData.dueTomorrow;
+    if (selectedFilter === "upcoming") return alertsData.upcoming;
+    return alertsData.allAlerts;
+  }, [alertsData, selectedFilter]);
 
   return (
-    <section className="alerts-page">
-
-      {/* ======================================
-          HEADER
-      ====================================== */}
-
-      <div className="alerts-header">
-
-        <div className="alerts-header-content">
-
-          <div className="alerts-header-icon">
-            <Bell size={24} />
-          </div>
-
-          <div>
-            <h1>Alerts</h1>
-
-            <p>
-              Stay updated with tasks that
-              need your attention.
-            </p>
-          </div>
-
+    <main className="alerts-page">
+      {/* ==========================================
+          HEADER (IMAGE 3)
+      ========================================== */}
+      <header className="alerts-header">
+        <div className="alerts-header-icon">
+          <Bell size={24} />
         </div>
+        <div className="alerts-header-text">
+          <h1>Alerts</h1>
+          <p>Stay updated with tasks that need your attention.</p>
+        </div>
+      </header>
 
-        <button
-          type="button"
-          className="refresh-alerts-button"
-          onClick={loadAlerts}
-          disabled={loading}
+      {/* ==========================================
+          4 SUMMARY STATS CARDS (IMAGE 3)
+      ========================================== */}
+      <section className="alerts-stats-grid">
+        {/* Total Alerts */}
+        <div
+          className="alert-stat-card"
+          onClick={() => setSelectedFilter("all")}
         >
-          <RefreshCw
-            size={17}
-            className={
-              loading
-                ? "refresh-spinning"
-                : ""
-            }
-          />
-
-          Refresh
-        </button>
-
-      </div>
-
-
-      {/* ======================================
-          SUMMARY CARDS
-      ====================================== */}
-
-      <div className="alert-summary">
-
-        <div className="summary-card">
-
-          <div className="summary-icon total">
-            <Bell size={19} />
+          <div className="alert-stat-icon-box icon-box-blue">
+            <Bell size={20} />
           </div>
-
-          <div>
-            <span>Total Alerts</span>
-            <strong>{summary.total}</strong>
+          <div className="alert-stat-info">
+            <span className="alert-stat-label">Total Alerts</span>
+            <span className="alert-stat-value">{alertsData.totalCount}</span>
           </div>
-
         </div>
 
-
-        <div className="summary-card">
-
-          <div className="summary-icon overdue">
-            <AlertCircle size={19} />
+        {/* Overdue */}
+        <div
+          className="alert-stat-card"
+          onClick={() => setSelectedFilter("overdue")}
+        >
+          <div className="alert-stat-icon-box icon-box-red">
+            <AlertCircle size={20} />
           </div>
-
-          <div>
-            <span>Overdue</span>
-            <strong>{summary.overdue}</strong>
+          <div className="alert-stat-info">
+            <span className="alert-stat-label">Overdue</span>
+            <span className="alert-stat-value" style={{ color: "#ef4444" }}>
+              {alertsData.overdueCount}
+            </span>
           </div>
-
         </div>
 
-
-        <div className="summary-card">
-
-          <div className="summary-icon today">
-            <Clock size={19} />
+        {/* Due Today */}
+        <div
+          className="alert-stat-card"
+          onClick={() => setSelectedFilter("due_today")}
+        >
+          <div className="alert-stat-icon-box icon-box-orange">
+            <Clock size={20} />
           </div>
-
-          <div>
-            <span>Due Today</span>
-            <strong>{summary.dueToday}</strong>
+          <div className="alert-stat-info">
+            <span className="alert-stat-label">Due Today</span>
+            <span className="alert-stat-value" style={{ color: "#f97316" }}>
+              {alertsData.dueTodayCount}
+            </span>
           </div>
-
         </div>
 
+        {/* Due Tomorrow */}
+        <div
+          className="alert-stat-card"
+          onClick={() => setSelectedFilter("due_tomorrow")}
+        >
+          <div className="alert-stat-icon-box icon-box-blue">
+            <Calendar size={20} />
+          </div>
+          <div className="alert-stat-info">
+            <span className="alert-stat-label">Due Tomorrow</span>
+            <span className="alert-stat-value" style={{ color: "#3b82f6" }}>
+              {alertsData.dueTomorrowCount}
+            </span>
+          </div>
+        </div>
+      </section>
 
-        <div className="summary-card">
-
-          <div className="summary-icon tomorrow">
-            <CalendarClock size={19} />
+      {/* ==========================================
+          NEEDS YOUR ATTENTION CARD (IMAGE 3)
+      ========================================== */}
+      <section className="alerts-main-card">
+        <div className="alerts-main-header">
+          <div className="alerts-main-title">
+            <h2>Needs Your Attention</h2>
+            <p>Tasks that require your attention based on their deadlines.</p>
           </div>
 
-          <div>
-            <span>Due Tomorrow</span>
-            <strong>{summary.dueTomorrow}</strong>
+          <div className="alerts-counter-pill">
+            {displayedAlerts.length}
           </div>
-
         </div>
 
-      </div>
-
-
-      {/* ======================================
-          LOADING
-      ====================================== */}
-
-      {loading && (
-        <div className="alerts-state">
-          <div className="alerts-loader"></div>
-
-          <p>
-            Checking your tasks...
-          </p>
-        </div>
-      )}
-
-
-      {/* ======================================
-          ERROR
-      ====================================== */}
-
-      {!loading && error && (
-        <div className="alerts-state error-state">
-
-          <AlertCircle size={30} />
-
-          <p>{error}</p>
-
+        {/* Category Filter Tabs */}
+        <div className="alerts-filter-tabs">
           <button
             type="button"
-            onClick={loadAlerts}
+            className={`alert-tab-btn ${
+              selectedFilter === "all" ? "active" : ""
+            }`}
+            onClick={() => setSelectedFilter("all")}
           >
-            Try Again
+            All Alerts ({alertsData.totalCount})
           </button>
-
+          <button
+            type="button"
+            className={`alert-tab-btn ${
+              selectedFilter === "overdue" ? "active" : ""
+            }`}
+            onClick={() => setSelectedFilter("overdue")}
+          >
+            Overdue ({alertsData.overdueCount})
+          </button>
+          <button
+            type="button"
+            className={`alert-tab-btn ${
+              selectedFilter === "due_today" ? "active" : ""
+            }`}
+            onClick={() => setSelectedFilter("due_today")}
+          >
+            Due Today ({alertsData.dueTodayCount})
+          </button>
+          <button
+            type="button"
+            className={`alert-tab-btn ${
+              selectedFilter === "due_tomorrow" ? "active" : ""
+            }`}
+            onClick={() => setSelectedFilter("due_tomorrow")}
+          >
+            Due Tomorrow ({alertsData.dueTomorrowCount})
+          </button>
+          <button
+            type="button"
+            className={`alert-tab-btn ${
+              selectedFilter === "upcoming" ? "active" : ""
+            }`}
+            onClick={() => setSelectedFilter("upcoming")}
+          >
+            Upcoming ({alertsData.upcomingCount})
+          </button>
         </div>
-      )}
 
-
-      {/* ======================================
-          NO ALERTS
-      ====================================== */}
-
-      {!loading &&
-        !error &&
-        alerts.length === 0 && (
-
-          <div className="alerts-empty">
-
-            <div className="empty-alert-icon">
-              <CheckCircle2 size={38} />
+        {/* Detailed Alerts List */}
+        <div className="alerts-items-list">
+          {displayedAlerts.length === 0 ? (
+            <div className="empty-alerts-box">
+              <CheckCircle2 size={36} color="#10b981" style={{ marginBottom: 8 }} />
+              <h3>All clear!</h3>
+              <p>There are no tasks requiring attention in this category.</p>
             </div>
+          ) : (
+            displayedAlerts.map((item, index) => (
+              <div
+                key={`${item.task._id}-${index}`}
+                className={`alert-detail-card alert-type-${item.type}`}
+              >
+                {/* Left Circle Icon */}
+                <div className={`alert-avatar-circle circle-${item.type}`}>
+                  {item.type === "overdue" ? (
+                    <AlertTriangle size={20} />
+                  ) : item.type === "due_today" ? (
+                    <Clock size={20} />
+                  ) : item.type === "due_tomorrow" ? (
+                    <Calendar size={20} />
+                  ) : (
+                    <Clock size={20} />
+                  )}
+                </div>
 
-            <h2>
-              You're all caught up!
-            </h2>
+                {/* Card Body */}
+                <div className="alert-card-body">
+                  <div className="alert-tags-row">
+                    <span className={`tag-badge tag-${item.type}`}>
+                      {item.badge}
+                    </span>
+                    <span
+                      className={`priority-pill-mini priority-${
+                        item.priority || "medium"
+                      }-mini`}
+                    >
+                      {item.priority || "medium"}
+                    </span>
+                  </div>
 
-            <p>
-              There are no overdue or
-              upcoming task alerts.
-            </p>
+                  <h3 className="alert-card-title">{item.title}</h3>
+                  <p className="alert-card-message">{item.message}</p>
 
-          </div>
-        )}
+                  <div className="alert-metadata-row">
+                    <span className="meta-item">
+                      <Calendar size={13} />
+                      {item.deadlineStr}
+                    </span>
+                    <span className="meta-item">
+                      <FolderOpen size={13} />
+                      {item.projectName}
+                    </span>
+                    <span className="meta-item">
+                      <User size={13} />
+                      {item.assigneeName}
+                    </span>
+                  </div>
+                </div>
 
-
-      {/* ======================================
-          ALERT LIST
-      ====================================== */}
-
-      {!loading &&
-        !error &&
-        alerts.length > 0 && (
-
-          <div className="alerts-list">
-
-            <div className="alerts-list-header">
-
-              <div>
-                <h2>
-                  Needs Your Attention
-                </h2>
-
-                <p>
-                  Tasks that require your
-                  attention based on their
-                  deadlines.
-                </p>
+                {/* Quick Actions */}
+                <div className="alert-actions-col">
+                  <button
+                    type="button"
+                    className="alert-done-btn"
+                    onClick={() => handleMarkAsDone(item.task._id)}
+                    title="Mark task as done"
+                  >
+                    <CheckCircle2 size={13} />
+                    Mark as Done
+                  </button>
+                </div>
               </div>
-
-              <span className="alert-count">
-                {alerts.length}
-              </span>
-
-            </div>
-
-
-            <div className="alert-items">
-
-              {alerts.map((alert) => (
-
-                <article
-                  key={alert.id}
-                  className={`alert-item ${alert.severity}`}
-                >
-
-                  {/* ALERT ICON */}
-
-                  <div className="alert-item-icon">
-                    {getAlertIcon(
-                      alert.type
-                    )}
-                  </div>
-
-
-                  {/* ALERT CONTENT */}
-
-                  <div className="alert-item-content">
-
-                    <div className="alert-item-top">
-
-                      <span className="alert-type">
-                        {getAlertLabel(
-                          alert.type
-                        )}
-                      </span>
-
-                      <span
-                        className={`task-priority ${getPriorityClass(
-                          alert.task?.priority
-                        )}`}
-                      >
-                        {alert.task?.priority ||
-                          "medium"}
-                      </span>
-
-                    </div>
-
-
-                    <h3>
-                      {alert.task?.title ||
-                        "Untitled Task"}
-                    </h3>
-
-
-                    <p className="alert-message">
-                      {alert.message}
-                    </p>
-
-
-                    <div className="alert-meta">
-
-                      <span>
-                        <CalendarClock
-                          size={15}
-                        />
-
-                        {formatDate(
-                          alert.task?.deadline
-                        )}
-                      </span>
-
-
-                      {alert.project?.name && (
-                        <span>
-                          <Bell size={14} />
-
-                          {alert.project.name}
-                        </span>
-                      )}
-
-                    </div>
-
-                  </div>
-
-                </article>
-
-              ))}
-
-            </div>
-
-          </div>
-        )}
-
-    </section>
+            ))
+          )}
+        </div>
+      </section>
+    </main>
   );
 }
 

@@ -5,16 +5,12 @@ const chatSessionSchema = new mongoose.Schema(
     title: {
       type: String,
       default: "New Chat",
-      trim: true,
-      maxlength: 60,
     },
 
-    // We will use this later when authentication is added
-    // For now, it can remain null
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      default: null,
+      required: true,
     },
 
     lastMessageAt: {

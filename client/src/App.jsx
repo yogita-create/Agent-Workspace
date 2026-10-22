@@ -4,25 +4,75 @@ import {
   Route,
   useNavigate,
   useLocation,
+  Navigate,
 } from "react-router-dom";
 
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import AcceptInvite from "./pages/AcceptInvite";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { useAuth } from "./context/AuthContext";
 import ProjectDetails from "./components/ProjectDetails";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
 import Projects from "./components/Projects";
-import ChatPanel from "./components/ChatPanel";
 import Tasks from "./components/Tasks";
+import Alerts from "./components/Alerts";
+import ChatPanel from "./components/ChatPanel";
+import Settings from "./components/Settings";
 import Calendar from "./components/Calendar";
-import Alerts from "./components/alerts";
-
+import TeamManagement from "./components/TeamManagement";
+import axiosInstance from "./api/axiosInstance";
 
 import "./App.css";
-
-const API_URL = "http://localhost:5000";
 
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { loading: authLoading } = useAuth();
+
+  // ==========================================
+  // THEME MANAGEMENT (DARK / LIGHT / SYSTEM)
+  // ==========================================
+
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("agent_workspace_theme") || "light";
+  });
+
+  const handleThemeChange = (newTheme) => {
+    setTheme(newTheme);
+    localStorage.setItem("agent_workspace_theme", newTheme);
+
+    if (newTheme === "system") {
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+      document.documentElement.setAttribute(
+        "data-theme",
+        prefersDark ? "dark" : "light"
+      );
+    } else {
+      document.documentElement.setAttribute("data-theme", newTheme);
+    }
+  };
+
+  useEffect(() => {
+    handleThemeChange(theme);
+  }, []);
+
+  // Listen for OS theme changes if on system mode
+  useEffect(() => {
+    if (theme !== "system") return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e) => {
+      document.documentElement.setAttribute(
+        "data-theme",
+        e.matches ? "dark" : "light"
+      );
+    };
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, [theme]);
 
   // ==========================================
   // ACTIVE PAGE
@@ -35,12 +85,9 @@ function App() {
   // ==========================================
 
   const [sessionId, setSessionId] = useState(null);
-
-  const [chatResetKey, setChatResetKey] =
-    useState(0);
-
-  const [refreshChats, setRefreshChats] =
-    useState(0);
+  const [chatResetKey, setChatResetKey] = useState(0);
+  const [refreshChats, setRefreshChats] = useState(0);
+  const [loadingSession, setLoadingSession] = useState(true);
 
   // ==========================================
   // UPDATE ACTIVE PAGE BASED ON URL
@@ -59,6 +106,10 @@ function App() {
       setActivePage("tasks");
     } else if (path === "/alerts") {
       setActivePage("alerts");
+    } else if (path === "/calendar") {
+      setActivePage("calendar");
+    } else if (path === "/team") {
+      setActivePage("team");
     } else if (path === "/settings") {
       setActivePage("settings");
     } else {
@@ -66,14 +117,11 @@ function App() {
     }
   }, [location.pathname]);
 
-
   // ==========================================
   // NAVIGATION
   // ==========================================
 
   const handleNavigate = (page) => {
-    console.log("Navigating to:", page);
-
     setActivePage(page);
 
     switch (page) {
@@ -101,11 +149,18 @@ function App() {
         navigate("/calendar");
         break;
 
+      case "team":
+        navigate("/team");
+        break;
+
+      case "settings":
+        navigate("/settings");
+        break;
+
       default:
         navigate("/");
     }
   };
-
 
   // ==========================================
   // CREATE NEW CHAT SESSION
@@ -113,54 +168,19 @@ function App() {
 
   const createNewSession = async () => {
     try {
-      const response = await fetch(
-        `${API_URL}/api/chat/sessions`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to create session: ${response.status}`
-        );
-      }
-
-      const data = await response.json();
+      const response = await axiosInstance.post("/api/chat/sessions");
+      const data = response.data;
 
       if (data.success && data.session) {
         setSessionId(data.session._id);
-
-        // Force ChatPanel reload
-        setChatResetKey(
-          (prev) => prev + 1
-        );
-
-        // Refresh chat sidebar
-        setRefreshChats(
-          (prev) => prev + 1
-        );
-
-        // Open AI Agent page
+        setChatResetKey((prev) => prev + 1);
+        setRefreshChats((prev) => prev + 1);
         navigate("/ai-agent");
-
-        console.log(
-          "New session created:",
-          data.session._id
-        );
       }
     } catch (error) {
-      console.error(
-        "Create session error:",
-        error
-      );
+      console.error("Create session error:", error);
     }
   };
-
 
   // ==========================================
   // SELECT EXISTING CHAT
@@ -168,23 +188,10 @@ function App() {
 
   const selectSession = (id) => {
     if (!id) return;
-
-    console.log(
-      "Selected session:",
-      id
-    );
-
     setSessionId(id);
-
-    // Reload ChatPanel
-    setChatResetKey(
-      (prev) => prev + 1
-    );
-
-    // Open AI Agent
+    setChatResetKey((prev) => prev + 1);
     navigate("/ai-agent");
   };
-
 
   // ==========================================
   // LOAD INITIAL CHAT SESSION
@@ -193,57 +200,42 @@ function App() {
   useEffect(() => {
     let ignore = false;
 
+    const isAuthPage =
+      location.pathname.startsWith("/login") ||
+      location.pathname.startsWith("/register") ||
+      location.pathname.startsWith("/accept-invite");
+
+    if (isAuthPage) {
+      setLoadingSession(false);
+      return;
+    }
+
+    if (authLoading) {
+      return;
+    }
+
     const loadInitialSession = async () => {
       try {
-        const response = await fetch(
-          `${API_URL}/api/chat/sessions`
-        );
+        setLoadingSession(true);
 
-        if (!response.ok) {
-          throw new Error(
-            `Failed to load sessions: ${response.status}`
-          );
-        }
-
-        const data =
-          await response.json();
+        const response = await axiosInstance.get("/api/chat/sessions");
+        const data = response.data;
 
         if (ignore) return;
 
-        if (
-          data.success &&
-          data.sessions &&
-          data.sessions.length > 0
-        ) {
-          // Open latest session
-
-          const latestSession =
-            data.sessions[0];
-
-          setSessionId(
-            latestSession._id
-          );
-
-          console.log(
-            "Opening existing session:",
-            latestSession._id
-          );
+        if (data.success && data.sessions && data.sessions.length > 0) {
+          setSessionId(data.sessions[0]._id);
         } else {
-          // No chat exists
-          // Create first session
-
           await createNewSession();
         }
       } catch (error) {
         if (!ignore) {
-          console.error(
-            "Load initial session error:",
-            error
-          );
+          console.error("Load initial session error:", error);
         }
       } finally {
-        // ChatPanel manages its own loading state and remains available
-        // even if this optional initial-session lookup is delayed.
+        if (!ignore) {
+          setLoadingSession(false);
+        }
       }
     };
 
@@ -252,137 +244,152 @@ function App() {
     return () => {
       ignore = true;
     };
-  }, []);
-
+  }, [authLoading]);
 
   // ==========================================
   // MAIN UI
   // ==========================================
 
+  const isAuthPage =
+    location.pathname.startsWith("/login") ||
+    location.pathname.startsWith("/register") ||
+    location.pathname.startsWith("/accept-invite");
+
+  // Render standalone auth pages (no Sidebar, no main-content wrapper)
+  if (isAuthPage) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/accept-invite/:token" element={<AcceptInvite />} />
+      </Routes>
+    );
+  }
+
   return (
     <div className="app">
-
       {/* ======================================
           LEFT SIDEBAR
       ====================================== */}
-
       <Sidebar
         activePage={activePage}
-
-        onNavigate={
-          handleNavigate
-        }
-
-        onNewChat={
-          createNewSession
-        }
-
-        onSelectSession={
-          selectSession
-        }
-
-        activeSessionId={
-          sessionId
-        }
-
-        refreshChats={
-          refreshChats
-        }
+        onNavigate={handleNavigate}
+        onNewChat={createNewSession}
+        onSelectSession={selectSession}
+        activeSessionId={sessionId}
+        refreshChats={refreshChats}
+        currentTheme={theme}
+        onThemeChange={handleThemeChange}
       />
 
       {/* ======================================
           MAIN CONTENT
       ====================================== */}
-
       <main className="main-content">
-
         <Routes>
-
-          {/* ==================================
-              DASHBOARD
-          ================================== */}
-
+          {/* DASHBOARD */}
           <Route
             path="/"
             element={
-              <Dashboard
-                onNavigate={
-                  handleNavigate
-                }
-              />
+              <ProtectedRoute>
+                <Dashboard onNavigate={handleNavigate} />
+              </ProtectedRoute>
             }
           />
 
-         
-
-
-          {/* ==================================
-              PROJECT LIST
-          ================================== */}
-
+          {/* PROJECT LIST */}
           <Route
             path="/projects"
             element={
-              <Projects />
+              <ProtectedRoute>
+                <Projects />
+              </ProtectedRoute>
             }
           />
 
-          {/* ==================================
-              PROJECT DETAILS
-          ================================== */}
-
+          {/* PROJECT DETAILS */}
           <Route
             path="/projects/:projectId"
             element={
-              <ProjectDetails />
+              <ProtectedRoute>
+                <ProjectDetails />
+              </ProtectedRoute>
             }
           />
 
-          {/* ==================================
-              AI AGENT
-          ================================== */}
-
+          {/* AI AGENT */}
           <Route
             path="/ai-agent"
             element={
-              <ChatPanel
-                key={chatResetKey}
-              />
+              <ProtectedRoute>
+                {loadingSession ? (
+                  <div className="page-loading">Loading Workspace Bot...</div>
+                ) : (
+                  <ChatPanel
+                    key={chatResetKey}
+                    sessionId={sessionId}
+                  />
+                )}
+              </ProtectedRoute>
             }
           />
 
-          {/* ==================================
-              TASKS
-          ================================== */}
-
+          {/* TASKS */}
           <Route
             path="/tasks"
-            element={<Tasks />}
+            element={
+              <ProtectedRoute>
+                <Tasks />
+              </ProtectedRoute>
+            }
           />
 
-          {/* ==================================
-              ALERTS
-          ================================== */}
+          {/* ALERTS */}
           <Route
             path="/alerts"
-            element={<Alerts/>}
+            element={
+              <ProtectedRoute>
+                <Alerts onNavigate={handleNavigate} />
+              </ProtectedRoute>
+            }
           />
 
-          {/* ==================================
-              SETTINGS
-          ================================== */}
-
-                    <Route
+          {/* CALENDAR */}
+          <Route
             path="/calendar"
-            element={<Calendar />}
+            element={
+              <ProtectedRoute>
+                <Calendar onNavigate={handleNavigate} />
+              </ProtectedRoute>
+            }
           />
-              
+
+          {/* TEAM & ACCESS */}
+          <Route
+            path="/team"
+            element={
+              <ProtectedRoute>
+                <TeamManagement />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* SETTINGS */}
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings
+                  currentTheme={theme}
+                  onThemeChange={handleThemeChange}
+                />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
-
       </main>
-
     </div>
   );
 }
 
-export default App;
+export default App;

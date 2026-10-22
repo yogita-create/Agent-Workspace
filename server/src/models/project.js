@@ -2,106 +2,57 @@ import mongoose from "mongoose";
 
 const projectSchema = new mongoose.Schema(
   {
-    // ==========================================
-    // PROJECT NAME
-    // ==========================================
-
     name: {
       type: String,
       required: true,
       trim: true,
     },
 
-
-    // ==========================================
-    // PROJECT DESCRIPTION
-    // ==========================================
-
     description: {
       type: String,
       default: "",
-      trim: true,
     },
-
-
-    // ==========================================
-    // TECH STACK
-    // ==========================================
 
     techStack: {
       type: String,
       default: "",
-      trim: true,
     },
-
-
-    // ==========================================
-    // PROJECT GOAL
-    // ==========================================
 
     goal: {
       type: String,
       default: "",
-      trim: true,
     },
-
-
-    // ==========================================
-    // PROJECT STATUS
-    // ==========================================
 
     status: {
       type: String,
-
-      enum: [
-        "Active",
-        "Completed",
-        "On Hold",
-      ],
-
+      enum: ["Active", "Completed", "On Hold"],
       default: "Active",
     },
 
+    organizationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      required: true,
+    },
 
-    // ==========================================
-    // PROJECT MEMBERS
-    // ==========================================
+    workspaceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Workspace",
+    },
 
     members: [
       {
-        name: {
-          type: String,
-          trim: true,
-        },
-
-        email: {
-          type: String,
-          trim: true,
-        },
-
-        role: {
-          type: String,
-          trim: true,
-        },
+        name: String,
+        email: String,
+        role: String,
       },
     ],
   },
-
-  // ==========================================
-  // TIMESTAMPS
-  // ==========================================
-
   {
     timestamps: true,
   }
 );
 
-
-const Project =
-  mongoose.model(
-    "Project",
-    projectSchema
-  );
-
+const Project = mongoose.model("Project", projectSchema);
 
 export default Project;

@@ -1,307 +1,182 @@
 import express from "express";
-
-import {
-  runAgent,
-  generateSessionTitle,
-} from "../agent/agentLoop.js";
+import { runAgent } from "../agent/agentLoop.js";
 
 import Project from "../models/project.js";
 import Task from "../models/Task.js";
 import ChatSession from "../models/ChatSession.js";
 import ChatMessage from "../models/ChatMessage.js";
+import verifyToken from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
-// ==========================================================
-// SETTINGS
-// ==========================================================
+// Apply verifyToken middleware to all chat routes
+router.use(verifyToken);
 
-// Generate a meaningful title after the user has sent
-// at least 2 messages.
-const TITLE_AFTER_USER_MESSAGES = 2;
-
-// ==========================================================
-// POST /api/chat
+// ==========================================
 // SEND MESSAGE TO AGENT
-// ==========================================================
+// POST /api/chat
+// ==========================================
 
 router.post("/", async (req, res) => {
   try {
-    const {
-      message,
-      sessionId,
-    } = req.body;
+    const { message, sessionId } = req.body;
 
-    // ======================================================
-    // 1. VALIDATE MESSAGE
-    // ======================================================
+    // --------------------------------------
+    // 1. Validate input
+    // --------------------------------------
 
-    if (
-      !message ||
-      !message.trim()
-    ) {
+    if (!message || !message.trim()) {
       return res.status(400).json({
         success: false,
-        message:
-          "Message is required",
+        message: "Message is required",
       });
     }
 
     if (!sessionId) {
       return res.status(400).json({
         success: false,
-        message:
-          "sessionId is required",
+        message: "sessionId is required",
       });
     }
 
-    const userMessage =
-      message.trim();
+    // --------------------------------------
+    // 2. Check if chat session exists & verify ownership
+    // --------------------------------------
 
-    // ======================================================
-    // 2. FIND SESSION
-    // ======================================================
-
-    const session =
-      await ChatSession.findById(
-        sessionId
-      );
+    const session = await ChatSession.findById(sessionId);
 
     if (!session) {
       return res.status(404).json({
         success: false,
-        message:
-          "Chat session not found",
+        message: "Chat session not found",
       });
     }
 
-    // ======================================================
-    // 3. LOAD PREVIOUS CHAT HISTORY
-    // ======================================================
-    //
-    // IMPORTANT:
-    // We load the history BEFORE saving the current
-    // user message.
-    //
-    // Therefore runAgent receives:
-    //
-    // previous user message
-    // previous assistant response
-    // current user message
-    //
-    // This prevents the current message from appearing twice.
-    // ======================================================
-
-    const previousMessages =
-      await ChatMessage.find({
-        sessionId,
-      })
-        .sort({
-          createdAt: 1,
-        })
-        .select(
-          "role content createdAt"
-        )
-        .lean();
-
-    const history =
-      previousMessages.map(
-        (chatMessage) => ({
-          role:
-            chatMessage.role,
-
-          content:
-            chatMessage.content,
-        })
-      );
-
-    // ======================================================
-    // 4. SAVE CURRENT USER MESSAGE
-    // ======================================================
-
-    await ChatMessage.create({
-      sessionId,
-
-      role: "user",
-
-      content: userMessage,
-    });
-
-    // ======================================================
-    // 5. LOAD PROJECTS
-    // ======================================================
-
-    const projects =
-      await Project.find()
-        .select(
-          "_id name status"
-        )
-        .lean();
-
-    // ======================================================
-    // 6. LOAD TASKS WITH PROJECT NAME
-    // ======================================================
-
-    const tasks =
-      await Task.find()
-        .populate(
-          "projectId",
-          "_id name status"
-        )
-        .lean();
-
-    // ======================================================
-    // 7. RUN AGENT
-    // ======================================================
-
-    const result =
-      await runAgent(
-        userMessage,
-        {
-          projects,
-
-          tasks,
-
-          history,
-
-          currentDate:
-            new Date().toISOString(),
-        }
-      );
-
-    // ======================================================
-    // 8. GET PROPOSED ACTION IDs
-    // ======================================================
-
-    const proposedActionIds =
-      result.proposedActions
-        ? result.proposedActions.map(
-            (action) =>
-              action._id
-          )
-        : [];
-
-    // ======================================================
-    // 9. SAVE AGENT RESPONSE
-    // ======================================================
-
-    await ChatMessage.create({
-      sessionId,
-
-      role: "assistant",
-
-      content:
-        result.agentReply ||
-        "I've proposed an action for your approval.",
-
-      proposedActions:
-        proposedActionIds,
-    });
-
-    // ======================================================
-    // 10. UPDATE SESSION ACTIVITY
-    // ======================================================
-
-    session.lastMessageAt =
-      new Date();
-
-    // ======================================================
-    // 11. GENERATE MEANINGFUL TITLE
-    // ======================================================
-
-    if (
-      session.title ===
-      "New Chat"
-    ) {
-      const userMessages =
-        await ChatMessage.find({
-          sessionId,
-
-          role: "user",
-        })
-          .sort({
-            createdAt: 1,
-          })
-          .select(
-            "content"
-          )
-          .lean();
-
-      // ----------------------------------------------------
-      // Wait until at least 2 user messages.
-      // ----------------------------------------------------
-
-      if (
-        userMessages.length >=
-        TITLE_AFTER_USER_MESSAGES
-      ) {
-        try {
-          const generatedTitle =
-            await generateSessionTitle(
-              userMessages.map(
-                (msg) =>
-                  msg.content
-              )
-            );
-
-          if (
-            generatedTitle &&
-            generatedTitle.trim()
-          ) {
-            session.title =
-              generatedTitle
-                .trim()
-                .slice(0, 60);
-          }
-        } catch (titleError) {
-          console.error(
-            "Session title generation error:",
-            titleError
-          );
-
-          // Keep "New Chat" if title generation fails.
-        }
-      }
+    if (!session.userId || session.userId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Access forbidden: You do not own this chat session",
+      });
     }
 
-    // ======================================================
-    // 12. SAVE SESSION
-    // ======================================================
+    // --------------------------------------
+    // 3. Fetch recent conversation history
+    // --------------------------------------
+
+    const previousMessages = await ChatMessage.find({ sessionId })
+      .sort({ createdAt: -1 })
+      .limit(8)
+      .lean();
+
+    // Reverse to chronological order
+    const history = previousMessages.reverse();
+
+    // --------------------------------------
+    // 4. Save user's message
+    // --------------------------------------
+
+    await ChatMessage.create({
+      sessionId: sessionId,
+      role: "user",
+      content: message,
+    });
+
+    // --------------------------------------
+    // 5. Get current projects, tasks and team members
+    // --------------------------------------
+
+    const projects = await Project.find();
+    const tasks = await Task.find().populate("projectId", "name status");
+
+    const memberMap = new Map();
+    memberMap.set("yogita@example.com", {
+      name: "Yogita",
+      email: "yogita@example.com",
+      role: "Lead Developer",
+    });
+
+    projects.forEach((p) => {
+      if (Array.isArray(p.members)) {
+        p.members.forEach((m) => {
+          if (m.email) {
+            memberMap.set(m.email.toLowerCase(), {
+              name: m.name,
+              email: m.email,
+              role: m.role || "Member",
+            });
+          }
+        });
+      }
+    });
+
+    // --------------------------------------
+    // 6. Run Agent
+    // --------------------------------------
+
+    const result = await runAgent(
+      message,
+      {
+        projects,
+        tasks,
+        collaborators: Array.from(memberMap.values()),
+      },
+      history
+    );
+
+    // --------------------------------------
+    // 7. Get proposed action IDs
+    // --------------------------------------
+
+    const proposedActionIds = result.proposedActions
+      ? result.proposedActions.map((action) => action._id)
+      : [];
+
+    // --------------------------------------
+    // 8. Save Agent's response
+    // --------------------------------------
+
+    await ChatMessage.create({
+      sessionId: sessionId,
+      role: "assistant",
+      content:
+        result.agentReply ||
+        "I've proposed some actions for your approval.",
+      proposedActions: proposedActionIds,
+    });
+
+    // --------------------------------------
+    // 9. Update session
+    // --------------------------------------
+
+    session.lastMessageAt = new Date();
+
+    // If this is the first real message, use it as the chat title
+    if (session.title === "New Chat") {
+      session.title =
+        message.length > 40
+          ? message.substring(0, 40) + "..."
+          : message;
+    }
 
     await session.save();
 
-    // ======================================================
-    // 13. SEND RESPONSE TO FRONTEND
-    // ======================================================
+    // --------------------------------------
+    // 10. Send response to frontend
+    // --------------------------------------
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-
-      sessionId:
-        session._id,
-
-      agentReply:
-        result.agentReply,
-
-      proposedActions:
-        result.proposedActions ||
-        [],
-
-      sessionTitle:
-        session.title,
+      sessionId: session._id,
+      agentReply: result.agentReply,
+      proposedActions: result.proposedActions || [],
     });
-  } catch (error) {
-    console.error(
-      "Agent error:",
-      error
-    );
 
-    return res.status(500).json({
+  } catch (err) {
+    console.error("Agent error:", err);
+
+    res.status(500).json({
       success: false,
-
-      error:
-        error.message ||
-        "Something went wrong while processing the message.",
+      error: err.message,
     });
   }
 });

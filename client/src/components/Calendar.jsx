@@ -1,250 +1,70 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
-  RefreshCw,
-  CalendarDays,
-  Clock3,
+  RotateCw,
+  Clock,
   AlertCircle,
   CheckCircle2,
-  FolderKanban,
+  Plus,
+  Share2,
+  Folder,
+  Tag,
+  User,
+  Edit3,
+  Calendar as CalendarIcon,
 } from "lucide-react";
-
+import TaskModal from "./TaskModal";
+import ShareTaskModal from "./ShareTaskModal";
+import axiosInstance from "../api/axiosInstance";
 import "./Calendar.css";
 
-const API_URL = "http://localhost:5000";
+const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
-// ==========================================
-// DATE HELPERS
-// ==========================================
-
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function formatDateKey(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
-function getTodayKey() {
-  return formatDateKey(new Date());
-}
-
-function getTaskDateKey(deadline) {
-  if (!deadline) return null;
-
-  const date = new Date(deadline);
-
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  return formatDateKey(date);
-}
-
-function isSameDate(date1, date2) {
-  return formatDateKey(date1) === formatDateKey(date2);
-}
-
-function getDateWithoutTime(date) {
-  return new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate()
-  );
-}
-
-// ==========================================
-// TASK STATUS
-// ==========================================
-
-function getDeadlineType(deadline) {
-  if (!deadline) return "upcoming";
-
-  const today = getDateWithoutTime(new Date());
-  const taskDate = getDateWithoutTime(new Date(deadline));
-
-  const difference =
-    (taskDate.getTime() - today.getTime()) /
-    (1000 * 60 * 60 * 24);
-
-  if (difference < 0) {
-    return "overdue";
-  }
-
-  if (difference === 0) {
-    return "today";
-  }
-
-  if (difference === 1) {
-    return "tomorrow";
-  }
-
-  return "upcoming";
-}
-
-function getDeadlineLabel(deadline) {
-  const type = getDeadlineType(deadline);
-
-  switch (type) {
-    case "overdue":
-      return "Overdue";
-
-    case "today":
-      return "Due Today";
-
-    case "tomorrow":
-      return "Due Tomorrow";
-
-    default:
-      return "Upcoming";
-  }
-}
-
-function formatTaskTime(deadline) {
-  if (!deadline) return "";
-
-  const date = new Date(deadline);
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  return date.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function formatSelectedDate(date) {
-  return date.toLocaleDateString([], {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-// ==========================================
-// BUILD CALENDAR DAYS
-// ==========================================
-
-function buildCalendarDays(year, month) {
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-
-  const daysInMonth = lastDay.getDate();
-
-  const previousMonthDays = firstDay.getDay();
-
-  const totalCells = Math.ceil(
-    (previousMonthDays + daysInMonth) / 7
-  ) * 7;
-
-  const days = [];
-
-  for (let index = 0; index < totalCells; index++) {
-    const date = new Date(
-      year,
-      month,
-      index - previousMonthDays + 1
-    );
-
-    days.push({
-      date,
-      currentMonth: date.getMonth() === month,
-      key: formatDateKey(date),
-    });
-  }
-
-  return days;
-}
-
-// ==========================================
-// CALENDAR COMPONENT
-// ==========================================
-
-function Calendar() {
-  const today = new Date();
-
-  const [currentMonth, setCurrentMonth] = useState(
-    today.getMonth()
-  );
-
-  const [currentYear, setCurrentYear] = useState(
-    today.getFullYear()
-  );
-
-  const [selectedDate, setSelectedDate] = useState(today);
-
+function Calendar({ onNavigate }) {
   const [tasks, setTasks] = useState([]);
-
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [refreshing, setRefreshing] = useState(false);
-
   const [error, setError] = useState("");
 
-  // ==========================================
-  // FETCH TASKS
-  // ==========================================
+  // Month navigation state
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+  // Selected single date for the side inspector
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
 
-  const loadTasks = async (showRefresh = false) => {
+  // Modals state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState(null);
+  const [taskToShare, setTaskToShare] = useState(null);
+
+  // ==========================================
+  // FETCH TASKS & PROJECTS
+  // ==========================================
+  const fetchTasksAndProjects = async (isManualRefresh = false) => {
     try {
-      if (showRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-
+      if (isManualRefresh) setRefreshing(true);
+      else setLoading(true);
       setError("");
 
-      const response = await fetch(
-        `${API_URL}/api/tasks`
-      );
+      const [tasksRes, projectsRes] = await Promise.all([
+        axiosInstance.get("/api/tasks"),
+        axiosInstance.get("/api/projects"),
+      ]);
 
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch tasks: ${response.status}`
-        );
+      const tasksData = tasksRes.data;
+      const projectsData = projectsRes.data;
+
+      if (tasksData.success) {
+        setTasks(tasksData.tasks || []);
       }
-
-      const data = await response.json();
-
-      let taskList = [];
-
-      if (Array.isArray(data)) {
-        taskList = data;
-      } else if (Array.isArray(data.tasks)) {
-        taskList = data.tasks;
-      } else if (Array.isArray(data.data)) {
-        taskList = data.data;
+      if (projectsData.success) {
+        setProjects(projectsData.projects || []);
       }
-
-      setTasks(taskList);
     } catch (err) {
-      console.error("Calendar task loading error:", err);
-
-      setError(
-        "Unable to load tasks. Please check the server connection."
-      );
+      console.error("Error loading calendar tasks:", err);
+      setError("Failed to load tasks for calendar. Please check connection.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -252,591 +72,576 @@ function Calendar() {
   };
 
   useEffect(() => {
-    loadTasks();
+    fetchTasksAndProjects();
   }, []);
 
-  // ==========================================
-  // CALENDAR DAYS
-  // ==========================================
+  // Update Status handler
+  const handleStatusChange = async (taskId, newStatus) => {
+    try {
+      setTasks((prev) =>
+        prev.map((t) => (t._id === taskId ? { ...t, status: newStatus } : t))
+      );
 
-  const calendarDays = useMemo(() => {
-    return buildCalendarDays(
-      currentYear,
-      currentMonth
+      const response = await axiosInstance.put(`/api/tasks/${taskId}`, {
+        status: newStatus,
+      });
+
+      if (!response.data?.success) {
+        fetchTasksAndProjects();
+      }
+    } catch (err) {
+      console.error("Status update error:", err);
+      fetchTasksAndProjects();
+    }
+  };
+
+  // Helper to normalize Date to YYYY-MM-DD string
+  const toDateKey = (date) => {
+    if (!date) return null;
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return null;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper to check urgency / deadline status
+  const getTaskUrgency = (task) => {
+    if (task.status === "done") return "done";
+    if (!task.deadline && !task.dueDate) return "upcoming";
+
+    const deadline = new Date(task.deadline || task.dueDate);
+    const taskDay = new Date(
+      deadline.getFullYear(),
+      deadline.getMonth(),
+      deadline.getDate()
     );
-  }, [currentYear, currentMonth]);
 
-  // ==========================================
-  // TASKS WITH DEADLINES
-  // ==========================================
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const deadlineTasks = useMemo(() => {
-    return tasks.filter(
-      (task) =>
-        task.deadline &&
-        !Number.isNaN(
-          new Date(task.deadline).getTime()
-        )
-    );
+    if (taskDay < today) return "overdue";
+    if (taskDay.getTime() === today.getTime()) return "today";
+    if (taskDay.getTime() === tomorrow.getTime()) return "tomorrow";
+    return "upcoming";
+  };
+
+  // Map tasks by date key
+  const tasksByDate = useMemo(() => {
+    const map = {};
+    tasks.forEach((task) => {
+      const key = toDateKey(task.deadline || task.dueDate);
+      if (key) {
+        if (!map[key]) map[key] = [];
+        map[key].push(task);
+      }
+    });
+    return map;
   }, [tasks]);
 
-  // ==========================================
-  // TASKS FOR SELECTED DATE
-  // ==========================================
+  // Overall workspace deadline summary for top banner
+  const deadlineSummary = useMemo(() => {
+    let overdueCount = 0;
+    let todayCount = 0;
+    let tomorrowCount = 0;
+    let upcomingCount = 0;
 
-  const selectedDateTasks = useMemo(() => {
-    const selectedKey = formatDateKey(selectedDate);
-
-    return deadlineTasks
-      .filter(
-        (task) =>
-          getTaskDateKey(task.deadline) ===
-          selectedKey
-      )
-      .sort((a, b) => {
-        return (
-          new Date(a.deadline) -
-          new Date(b.deadline)
-        );
-      });
-  }, [selectedDate, deadlineTasks]);
-
-  // ==========================================
-  // TASKS BY DATE
-  // ==========================================
-
-  const tasksByDate = useMemo(() => {
-    const grouped = {};
-
-    deadlineTasks.forEach((task) => {
-      const key = getTaskDateKey(task.deadline);
-
-      if (!key) return;
-
-      if (!grouped[key]) {
-        grouped[key] = [];
-      }
-
-      grouped[key].push(task);
+    tasks.forEach((t) => {
+      const urgency = getTaskUrgency(t);
+      if (urgency === "overdue") overdueCount++;
+      else if (urgency === "today") todayCount++;
+      else if (urgency === "tomorrow") tomorrowCount++;
+      else if (urgency === "upcoming") upcomingCount++;
     });
 
-    return grouped;
-  }, [deadlineTasks]);
-
-  // ==========================================
-  // SUMMARY
-  // ==========================================
-
-  const overdueCount = useMemo(() => {
-    return deadlineTasks.filter(
-      (task) =>
-        getDeadlineType(task.deadline) ===
-        "overdue" &&
-        task.status !== "done"
-    ).length;
-  }, [deadlineTasks]);
-
-  const todayCount = useMemo(() => {
-    return deadlineTasks.filter(
-      (task) =>
-        getDeadlineType(task.deadline) ===
-          "today" &&
-        task.status !== "done"
-    ).length;
-  }, [deadlineTasks]);
-
-  const tomorrowCount = useMemo(() => {
-    return deadlineTasks.filter(
-      (task) =>
-        getDeadlineType(task.deadline) ===
-          "tomorrow" &&
-        task.status !== "done"
-    ).length;
-  }, [deadlineTasks]);
-
-  // ==========================================
-  // NAVIGATE MONTH
-  // ==========================================
-
-  const goToPreviousMonth = () => {
-    if (currentMonth === 0) {
-      setCurrentMonth(11);
-      setCurrentYear((prev) => prev - 1);
-    } else {
-      setCurrentMonth((prev) => prev - 1);
+    if (overdueCount > 0) {
+      return {
+        type: "overdue",
+        title: `${overdueCount} task${overdueCount > 1 ? "s" : ""} overdue`,
+        subtitle: "Attention needed on past-due deliverables.",
+      };
     }
-  };
-
-  const goToNextMonth = () => {
-    if (currentMonth === 11) {
-      setCurrentMonth(0);
-      setCurrentYear((prev) => prev + 1);
-    } else {
-      setCurrentMonth((prev) => prev + 1);
+    if (todayCount > 0) {
+      return {
+        type: "today",
+        title: `${todayCount} task${todayCount > 1 ? "s" : ""} due today`,
+        subtitle: "Prioritize today's scheduled commitments.",
+      };
     }
-  };
+    if (tomorrowCount > 0) {
+      return {
+        type: "tomorrow",
+        title: `${tomorrowCount} task${tomorrowCount > 1 ? "s" : ""} due tomorrow`,
+        subtitle: "Plan ahead for tomorrow's deadlines.",
+      };
+    }
+    return {
+      type: "upcoming",
+      title: "All tasks on schedule",
+      subtitle: `${upcomingCount} upcoming task${upcomingCount === 1 ? "" : "s"} planned ahead.`,
+    };
+  }, [tasks]);
 
-  const goToToday = () => {
-    const now = new Date();
+  // Generate Month Days Grid
+  const calendarDays = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
 
-    setCurrentMonth(now.getMonth());
-    setCurrentYear(now.getFullYear());
-    setSelectedDate(now);
-  };
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const prevMonthDays = new Date(year, month, 0).getDate();
 
-  // ==========================================
-  // GET PROJECT NAME
-  // ==========================================
+    const days = [];
 
-  const getProjectName = (task) => {
-    if (!task.projectId) {
-      return "No project";
+    // Prev month padding days
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const d = prevMonthDays - i;
+      const dateObj = new Date(year, month - 1, d);
+      days.push({
+        date: dateObj,
+        dayNumber: d,
+        isCurrentMonth: false,
+        dateKey: toDateKey(dateObj),
+      });
     }
 
-    if (typeof task.projectId === "object") {
-      return (
-        task.projectId.name ||
-        task.projectId.title ||
-        "No project"
-      );
+    // Current month days
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(year, month, d);
+      days.push({
+        date: dateObj,
+        dayNumber: d,
+        isCurrentMonth: true,
+        dateKey: toDateKey(dateObj),
+      });
     }
 
-    return "Project";
+    // Next month padding days to complete grid (multiples of 7, usually 35 or 42)
+    const totalCells = Math.ceil(days.length / 7) * 7;
+    const remaining = totalCells - days.length;
+    for (let d = 1; d <= remaining; d++) {
+      const dateObj = new Date(year, month + 1, d);
+      days.push({
+        date: dateObj,
+        dayNumber: d,
+        isCurrentMonth: false,
+        dateKey: toDateKey(dateObj),
+      });
+    }
+
+    return days;
+  }, [currentDate]);
+
+  // Tasks scheduled for the currently selected day
+  const selectedDateKey = toDateKey(selectedDate);
+  const selectedDayTasks = tasksByDate[selectedDateKey] || [];
+
+  // Count total tasks in the displayed month
+  const currentMonthTaskCount = useMemo(() => {
+    const y = currentDate.getFullYear();
+    const m = currentDate.getMonth();
+    return tasks.filter((t) => {
+      if (!t.deadline && !t.dueDate) return false;
+      const d = new Date(t.deadline || t.dueDate);
+      return d.getFullYear() === y && d.getMonth() === m;
+    }).length;
+  }, [tasks, currentDate]);
+
+  // Month navigation handlers
+  const handlePrevMonth = () => {
+    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
   };
 
-  // ==========================================
-  // RENDER
-  // ==========================================
+  const handleNextMonth = () => {
+    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const handleGoToToday = () => {
+    const today = new Date();
+    setCurrentDate(today);
+    setSelectedDate(today);
+  };
+
+  // Month name formatting
+  const monthYearString = currentDate.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
+  // Selected date full string formatting
+  const selectedDateFullString = selectedDate.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const todayKey = toDateKey(new Date());
 
   return (
     <div className="calendar-page">
-
-      {/* ======================================
+      {/* ==========================================
           HEADER
-      ====================================== */}
-
-      <div className="calendar-header">
-
-        <div className="calendar-header-content">
-
-          <div className="calendar-header-icon">
+      ========================================== */}
+      <header className="calendar-header">
+        <div className="calendar-title-wrap">
+          <div className="calendar-title-icon">
             <CalendarDays size={24} />
           </div>
-
           <div>
             <h1>Calendar</h1>
-
-            <p>
-              Manage your tasks and deadlines in one place.
-            </p>
+            <p>Manage your tasks and deadlines in one place.</p>
           </div>
-
         </div>
 
-        <button
-          className="calendar-refresh-button"
-          onClick={() => loadTasks(true)}
-          disabled={refreshing}
-        >
-          <RefreshCw
-            size={16}
-            className={
-              refreshing
-                ? "calendar-refresh-spinning"
-                : ""
-            }
-          />
-
-          {refreshing ? "Refreshing..." : "Refresh"}
-        </button>
-
-      </div>
-
-      {/* ======================================
-          DEADLINE ALERTS
-      ====================================== */}
-
-      {!loading && !error && (
-        <div className="calendar-alerts">
-
-          {overdueCount > 0 && (
-            <div className="calendar-alert overdue">
-              <AlertCircle size={19} />
-
-              <div>
-                <strong>
-                  {overdueCount} overdue{" "}
-                  {overdueCount === 1
-                    ? "task"
-                    : "tasks"}
-                </strong>
-
-                <span>
-                  These tasks have passed their deadlines.
-                </span>
-              </div>
-            </div>
-          )}
-
-          {todayCount > 0 && (
-            <div className="calendar-alert today">
-              <Clock3 size={19} />
-
-              <div>
-                <strong>
-                  {todayCount} task
-                  {todayCount === 1 ? "" : "s"} due today
-                </strong>
-
-                <span>
-                  Make sure today's deadlines are completed.
-                </span>
-              </div>
-            </div>
-          )}
-
-          {tomorrowCount > 0 && (
-            <div className="calendar-alert tomorrow">
-              <CalendarDays size={19} />
-
-              <div>
-                <strong>
-                  {tomorrowCount} task
-                  {tomorrowCount === 1 ? "" : "s"} due tomorrow
-                </strong>
-
-                <span>
-                  Plan ahead for tomorrow's deadlines.
-                </span>
-              </div>
-            </div>
-          )}
-
-        </div>
-      )}
-
-      {/* ======================================
-          ERROR
-      ====================================== */}
-
-      {error && (
-        <div className="calendar-error">
-          <AlertCircle size={20} />
-
-          <div>
-            <strong>Unable to load calendar</strong>
-
-            <p>{error}</p>
-          </div>
-
-          <button onClick={() => loadTasks()}>
-            Try Again
+        <div className="calendar-header-actions">
+          <button
+            type="button"
+            className="calendar-refresh-btn"
+            onClick={() => fetchTasksAndProjects(true)}
+            disabled={refreshing}
+            title="Refresh tasks"
+          >
+            <RotateCw size={15} className={refreshing ? "spin-icon" : ""} />
+            <span>Refresh</span>
           </button>
         </div>
-      )}
+      </header>
 
-      {/* ======================================
-          MAIN CALENDAR
-      ====================================== */}
-
-      {!error && (
-        <div className="calendar-layout">
-
-          {/* ==================================
-              CALENDAR CARD
-          ================================== */}
-
-          <section className="calendar-card">
-
-            {/* MONTH HEADER */}
-
-            <div className="calendar-navigation">
-
-              <div>
-                <h2>
-                  {MONTH_NAMES[currentMonth]}{" "}
-                  {currentYear}
-                </h2>
-
-                <span>
-                  {deadlineTasks.length} scheduled{" "}
-                  {deadlineTasks.length === 1
-                    ? "task"
-                    : "tasks"}
-                </span>
-              </div>
-
-              <div className="calendar-navigation-actions">
-
-                <button
-                  onClick={goToToday}
-                  className="today-button"
-                >
-                  Today
-                </button>
-
-                <button
-                  onClick={goToPreviousMonth}
-                  className="calendar-nav-button"
-                  aria-label="Previous month"
-                >
-                  <ChevronLeft size={19} />
-                </button>
-
-                <button
-                  onClick={goToNextMonth}
-                  className="calendar-nav-button"
-                  aria-label="Next month"
-                >
-                  <ChevronRight size={19} />
-                </button>
-
-              </div>
-
+      {/* ==========================================
+          MAIN 2-COLUMN VIEW (CALENDAR + INSPECTOR)
+      ========================================== */}
+      <div className="calendar-main-grid">
+        {/* LEFT COLUMN: THE MONTH CALENDAR */}
+        <div className="calendar-card">
+          {/* Top Bar inside card: Month info + navigation controls */}
+          <div className="calendar-card-header">
+            <div>
+              <h2 className="calendar-month-title">{monthYearString}</h2>
+              <span className="calendar-tasks-count">
+                {currentMonthTaskCount} scheduled tasks
+              </span>
             </div>
 
-            {/* WEEK DAYS */}
+            <div className="calendar-nav-controls">
+              <button
+                type="button"
+                className="calendar-today-btn"
+                onClick={handleGoToToday}
+              >
+                today
+              </button>
 
-            <div className="calendar-weekdays">
+              <div className="calendar-arrow-group">
+                <button
+                  type="button"
+                  className="calendar-nav-arrow"
+                  onClick={handlePrevMonth}
+                  title="Previous Month"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  type="button"
+                  className="calendar-nav-arrow"
+                  onClick={handleNextMonth}
+                  title="Next Month"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
 
-              {WEEK_DAYS.map((day) => (
+          {/* Weekday column names */}
+          <div className="calendar-weekdays-row">
+            {WEEKDAYS.map((day) => (
+              <div key={day} className="calendar-weekday-col">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* 7-column calendar grid */}
+          <div className="calendar-days-grid">
+            {calendarDays.map((cell, index) => {
+              const dayTasks = tasksByDate[cell.dateKey] || [];
+              const isSelected = cell.dateKey === selectedDateKey;
+              const isToday = cell.dateKey === todayKey;
+
+              return (
                 <div
-                  key={day}
-                  className="calendar-weekday"
+                  key={`${cell.dateKey}-${index}`}
+                  className={`calendar-day-cell ${
+                    !cell.isCurrentMonth ? "other-month" : ""
+                  } ${isSelected ? "selected-day" : ""} ${
+                    isToday ? "today-cell" : ""
+                  }`}
+                  onClick={() => setSelectedDate(cell.date)}
                 >
-                  {day}
-                </div>
-              ))}
-
-            </div>
-
-            {/* CALENDAR GRID */}
-
-            <div className="calendar-grid">
-
-              {calendarDays.map(
-                ({ date, currentMonth: isCurrentMonth, key }) => {
-
-                  const dayTasks =
-                    tasksByDate[key] || [];
-
-                  const isToday =
-                    isSameDate(date, today);
-
-                  const isSelected =
-                    isSameDate(date, selectedDate);
-
-                  return (
-                    <button
-                      key={key}
-                      className={`
-                        calendar-day
-                        ${!isCurrentMonth ? "outside-month" : ""}
-                        ${isToday ? "today" : ""}
-                        ${isSelected ? "selected" : ""}
-                      `}
-                      onClick={() =>
-                        setSelectedDate(date)
-                      }
+                  <div className="day-cell-top">
+                    <span
+                      className={`day-number ${
+                        isSelected ? "day-number-selected" : ""
+                      } ${isToday && !isSelected ? "day-number-today" : ""}`}
                     >
+                      {cell.dayNumber}
+                    </span>
+                  </div>
 
-                      <span className="calendar-day-number">
-                        {date.getDate()}
-                      </span>
-
-                      {dayTasks.length > 0 && (
-                        <div className="calendar-day-tasks">
-
-                          {dayTasks
-                            .slice(0, 3)
-                            .map((task) => {
-
-                              const type =
-                                getDeadlineType(
-                                  task.deadline
-                                );
-
-                              return (
-                                <span
-                                  key={task._id}
-                                  className={`
-                                    calendar-task-dot
-                                    ${type}
-                                  `}
-                                  title={task.title}
-                                >
-                                  <span>
-                                    {task.title}
-                                  </span>
-                                </span>
-                              );
-                            })}
-
-                          {dayTasks.length > 3 && (
-                            <span className="more-tasks">
-                              +{dayTasks.length - 3} more
-                            </span>
-                          )}
-
+                  {/* Task Pills inside cell */}
+                  <div className="day-tasks-container">
+                    {dayTasks.slice(0, 3).map((t) => {
+                      const urgency = getTaskUrgency(t);
+                      return (
+                        <div
+                          key={t._id}
+                          className={`calendar-task-pill urgency-${urgency}`}
+                          title={`${t.taskKey || "TSK"}: ${t.title} (${t.status})`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedDate(cell.date);
+                            setTaskToEdit(t);
+                          }}
+                        >
+                          <span className="pill-title">{t.title}</span>
                         </div>
-                      )}
-
-                    </button>
-                  );
-                }
-              )}
-
-            </div>
-
-            {/* LEGEND */}
-
-            <div className="calendar-legend">
-
-              <span>
-                <i className="legend-dot overdue" />
-                Overdue
-              </span>
-
-              <span>
-                <i className="legend-dot today" />
-                Today
-              </span>
-
-              <span>
-                <i className="legend-dot tomorrow" />
-                Tomorrow
-              </span>
-
-              <span>
-                <i className="legend-dot upcoming" />
-                Upcoming
-              </span>
-
-            </div>
-
-          </section>
-
-          {/* ==================================
-              SELECTED DATE TASKS
-          ================================== */}
-
-          <aside className="selected-date-card">
-
-            <div className="selected-date-header">
-
-              <div className="selected-date-icon">
-                <CalendarDays size={19} />
-              </div>
-
-              <div>
-                <h2>
-                  {formatSelectedDate(selectedDate)}
-                </h2>
-
-                <p>
-                  {selectedDateTasks.length}{" "}
-                  {selectedDateTasks.length === 1
-                    ? "task"
-                    : "tasks"}
-                </p>
-              </div>
-
-            </div>
-
-            <div className="selected-date-tasks">
-
-              {loading ? (
-                <div className="calendar-loading">
-                  <div className="calendar-loader" />
-                  <span>Loading tasks...</span>
+                      );
+                    })}
+                    {dayTasks.length > 3 && (
+                      <div className="calendar-more-pill">
+                        +{dayTasks.length - 3} more
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ) : selectedDateTasks.length === 0 ? (
-                <div className="no-calendar-tasks">
+              );
+            })}
+          </div>
 
-                  <CheckCircle2 size={34} />
+          {/* Calendar Legend */}
+          <div className="calendar-legend-bar">
+            <div className="legend-item">
+              <span className="legend-dot dot-overdue" />
+              <span>Overdue</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot dot-today" />
+              <span>Today</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot dot-tomorrow" />
+              <span>Tomorrow</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot dot-upcoming" />
+              <span>Upcoming</span>
+            </div>
+          </div>
+        </div>
 
-                  <strong>
-                    No tasks scheduled
-                  </strong>
+        {/* RIGHT COLUMN: SMART BANNER + SELECTED DATE INSPECTOR */}
+        <div className="calendar-sidebar-column">
+          {/* Smart Deadline Status Card */}
+          <div className={`calendar-summary-card banner-${deadlineSummary.type}`}>
+            <div className="summary-card-icon">
+              <CalendarIcon size={20} />
+            </div>
+            <div className="summary-card-content">
+              <strong>{deadlineSummary.title}</strong>
+              <p>{deadlineSummary.subtitle}</p>
+            </div>
+          </div>
 
-                  <span>
-                    There are no deadlines for this date.
+          {/* Selected Date Inspector Card */}
+          <div className="selected-date-inspector">
+            <div className="inspector-header">
+              <div className="inspector-date-box">
+                <div className="inspector-icon">
+                  <CalendarIcon size={18} />
+                </div>
+                <div>
+                  <h3>{selectedDateFullString}</h3>
+                  <span className="inspector-task-count">
+                    {selectedDayTasks.length} task
+                    {selectedDayTasks.length === 1 ? "" : "s"}
                   </span>
+                </div>
+              </div>
 
+              <button
+                type="button"
+                className="inspector-add-btn"
+                onClick={() => setShowCreateModal(true)}
+                title="Add task for this date"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+
+            <div className="inspector-body">
+              {selectedDayTasks.length === 0 ? (
+                <div className="inspector-empty-state">
+                  <div className="empty-check-circle">
+                    <CheckCircle2 size={36} />
+                  </div>
+                  <h4>No tasks scheduled</h4>
+                  <p>There are no deadlines for this date.</p>
+                  <button
+                    type="button"
+                    className="empty-create-btn"
+                    onClick={() => setShowCreateModal(true)}
+                  >
+                    <Plus size={15} />
+                    <span>Create Task</span>
+                  </button>
                 </div>
               ) : (
-                selectedDateTasks.map((task) => {
-
-                  const type =
-                    getDeadlineType(
-                      task.deadline
+                <div className="inspector-tasks-list">
+                  {selectedDayTasks.map((task) => {
+                    const urgency = getTaskUrgency(task);
+                    const projectObj = projects.find(
+                      (p) =>
+                        p._id === (task.projectId?._id || task.projectId)
                     );
 
-                  return (
-                    <div
-                      key={task._id}
-                      className={`calendar-task-card ${type}`}
-                    >
-
-                      <div className="calendar-task-card-top">
-
-                        <span
-                          className={`calendar-task-status ${type}`}
-                        >
-                          {getDeadlineLabel(
-                            task.deadline
+                    return (
+                      <div
+                        key={task._id}
+                        className={`inspector-task-card urgency-border-${urgency}`}
+                      >
+                        <div className="task-card-header">
+                          <span className="task-key-tag">
+                            {task.taskKey || "TSK"}
+                          </span>
+                          {projectObj && (
+                            <span className="task-project-tag">
+                              <Folder size={11} />
+                              {projectObj.title}
+                            </span>
                           )}
-                        </span>
+                          <span className={`task-urgency-tag urgency-${urgency}`}>
+                            {urgency}
+                          </span>
+                        </div>
 
-                        <span
-                          className={`
-                            calendar-priority
-                            ${task.priority || "medium"}
-                          `}
-                        >
-                          {task.priority || "medium"}
-                        </span>
+                        <h4 className="inspector-task-title">{task.title}</h4>
 
+                        {task.description && (
+                          <p className="inspector-task-desc">
+                            {task.description}
+                          </p>
+                        )}
+
+                        <div className="inspector-task-meta">
+                          <div className="task-meta-item">
+                            <span className="meta-label">Status:</span>
+                            <select
+                              value={task.status}
+                              onChange={(e) =>
+                                handleStatusChange(task._id, e.target.value)
+                              }
+                              className={`status-select status-${task.status}`}
+                            >
+                              <option value="todo">To Do</option>
+                              <option value="in_progress">In Progress</option>
+                              <option value="in_review">In Review</option>
+                              <option value="done">Done</option>
+                            </select>
+                          </div>
+
+                          <div className="task-meta-item">
+                            <span className="meta-label">Priority:</span>
+                            <span
+                              className={`priority-pill priority-${
+                                task.priority || "medium"
+                              }`}
+                            >
+                              {task.priority || "medium"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="inspector-task-footer">
+                          <div className="task-assignee-info">
+                            <div className="assignee-avatar-mini">
+                              {task.assignee?.name
+                                ? task.assignee.name.charAt(0).toUpperCase()
+                                : "U"}
+                            </div>
+                            <span>
+                              {task.assignee?.name || "Unassigned"}
+                            </span>
+                          </div>
+
+                          <div className="task-action-btns">
+                            <button
+                              type="button"
+                              className="task-action-icon-btn"
+                              onClick={() => setTaskToShare(task)}
+                              title="Share Task"
+                            >
+                              <Share2 size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              className="task-action-icon-btn"
+                              onClick={() => setTaskToEdit(task)}
+                              title="Edit Task"
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-
-                      <h3>{task.title}</h3>
-
-                      {task.description && (
-                        <p>
-                          {task.description}
-                        </p>
-                      )}
-
-                      <div className="calendar-task-meta">
-
-                        <span>
-                          <Clock3 size={13} />
-
-                          {formatTaskTime(
-                            task.deadline
-                          )}
-                        </span>
-
-                        <span>
-                          <FolderKanban size={13} />
-
-                          {getProjectName(task)}
-                        </span>
-
-                      </div>
-
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </div>
               )}
-
             </div>
-
-          </aside>
-
+          </div>
         </div>
+      </div>
+
+      {/* ==========================================
+          MODALS
+      ========================================== */}
+      {showCreateModal && (
+        <TaskModal
+          taskToEdit={null}
+          projects={projects}
+          onClose={() => setShowCreateModal(false)}
+          onTaskSaved={(savedTask) => {
+            fetchTasksAndProjects();
+            setShowCreateModal(false);
+          }}
+        />
       )}
 
+      {taskToEdit && (
+        <TaskModal
+          taskToEdit={taskToEdit}
+          projects={projects}
+          onClose={() => setTaskToEdit(null)}
+          onTaskSaved={(savedTask) => {
+            fetchTasksAndProjects();
+            setTaskToEdit(null);
+          }}
+        />
+      )}
+
+      {taskToShare && (
+        <ShareTaskModal
+          task={taskToShare}
+          onClose={() => setTaskToShare(null)}
+          onTaskUpdated={(updatedTask) => {
+            fetchTasksAndProjects();
+          }}
+        />
+      )}
     </div>
   );
 }

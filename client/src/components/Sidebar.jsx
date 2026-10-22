@@ -1,10 +1,30 @@
 import "./Sidebar.css";
-import { LayoutDashboard, FolderOpenDot, ListTodo, Bell, Bot, CalendarDays, Brain } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import {
+  LayoutDashboard,
+  FolderOpenDot,
+  ListTodo,
+  Bell,
+  Bot,
+  CalendarDays,
+  Users,
+  Settings,
+  Brain,
+  Sun,
+  Moon,
+  LogOut,
+} from "lucide-react";
 
 function Sidebar({
   activePage,
   onNavigate,
+  currentTheme,
+  onThemeChange,
 }) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
   const menuItems = [
     {
       id: "dashboard",
@@ -28,95 +48,136 @@ function Sidebar({
     },
     {
       id: "ai-agent",
-      label: "AI Agent",
+      label: "Workspace Bot",
       icon: Bot,
+      badge: "AI",
     },
     {
       id: "calendar",
       label: "Calendar",
       icon: CalendarDays,
     },
+    {
+      id: "team",
+      label: "Team",
+      icon: Users,
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      icon: Settings,
+    },
   ];
+
+  const toggleTheme = () => {
+    if (onThemeChange) {
+      onThemeChange(currentTheme === "dark" ? "light" : "dark");
+    }
+  };
+
+  const handleLogout = async (e) => {
+    e.stopPropagation();
+    try {
+      await logout();
+      navigate("/login");
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+  };
 
   return (
     <aside className="sidebar">
-
       {/* =====================================
           LOGO
       ===================================== */}
-
       <div className="sidebar-logo">
-
-        <div>
-          <Brain />
-          <h2>Agent Workspace</h2>
+        <div className="logo-brand" onClick={() => onNavigate("dashboard")}>
+          <div className="logo-icon-wrap">
+            <Brain size={22} />
+          </div>
+          <div>
+            <h2>Agent Workspace</h2>
+            <p>Project Hub</p>
+          </div>
         </div>
 
+        {/* Quick Theme Toggle */}
+        <button
+          type="button"
+          className="theme-quick-toggle"
+          onClick={toggleTheme}
+          title={currentTheme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        >
+          {currentTheme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
       </div>
-
 
       {/* =====================================
           MAIN NAVIGATION
       ===================================== */}
-
       <nav className="sidebar-nav">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activePage === item.id;
 
-        {menuItems.map((item) => (
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`sidebar-item ${isActive ? "active" : ""}`}
+              onClick={() => onNavigate(item.id)}
+            >
+              <span className="nav-icon">
+                <Icon size={19} />
+              </span>
 
-          <button
-            key={item.id}
-            type="button"
-            className={
-              activePage === item.id
-                ? "sidebar-item active"
-                : "sidebar-item"
-            }
-            onClick={() =>
-              onNavigate(item.id)
-            }
-          >
+              <span className="nav-label">{item.label}</span>
 
-            <span className="nav-icon">
-              {typeof item.icon === "string" ? (
-                item.icon
-              ) : (
-                <item.icon size={20} />
+              {item.badge && (
+                <span className="nav-badge">{item.badge}</span>
               )}
-            </span>
-
-            <span>
-              {item.label}
-            </span>
-
-          </button>
-
-        ))}
-
+            </button>
+          );
+        })}
       </nav>
 
-
       {/* =====================================
-          USER
+          AI BOT QUICK PROMO
       ===================================== */}
-
-      <div className="sidebar-user">
-
-        <div className="user-avatar">
-          Y
+      <div className="sidebar-promo-card" onClick={() => onNavigate("ai-agent")}>
+        <div className="promo-icon">
+          <Bot size={18} />
         </div>
-
-        <div>
-          <strong>
-            Yogita
-          </strong>
-
-          <small>
-            Workspace User
-          </small>
+        <div className="promo-text">
+          <strong>Workspace Bot</strong>
+          <p>Ask anything about tasks & due dates</p>
         </div>
-
       </div>
 
+      {/* =====================================
+          USER SECTION & WORKING LOGOUT BUTTON
+      ===================================== */}
+      <div className="sidebar-user-container">
+        <div className="sidebar-user" onClick={() => onNavigate("settings")} title="Open Settings">
+          <div className="user-avatar">
+            {user?.name ? user.name.charAt(0).toUpperCase() : "Y"}
+          </div>
+
+          <div className="user-details">
+            <strong>{user?.name || "Yogita"}</strong>
+            <small>{user?.email || "Lead Developer"}</small>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="sidebar-logout-btn"
+          onClick={handleLogout}
+          title="Sign out of account"
+        >
+          <LogOut size={16} />
+        </button>
+      </div>
     </aside>
   );
 }

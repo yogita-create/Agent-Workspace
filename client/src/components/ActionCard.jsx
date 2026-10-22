@@ -1,53 +1,33 @@
 import { useState } from "react";
+import axiosInstance from "../api/axiosInstance";
 import "./ChatPanel.css";
 
-function ActionCard({ action, projects = [], onActionComplete }) {
-  const [status, setStatus] = useState(
-    action.status === "executed"
-      ? "approved"
-      : action.status || "pending"
-  );
-
+function ActionCard({ action }) {
+  const [status, setStatus] = useState(action.status || "pending");
   const [loading, setLoading] = useState(false);
 
   const actionLabels = {
     create_task: "Create a new task",
+    assign_task: "Assign task to team member",
+    share_task: "Share task with collaborator",
     update_task_status: "Update task status",
     update_task_priority: "Update task priority",
     update_task_deadline: "Update task deadline",
     update_project_status: "Update project status",
   };
 
-  // Find project for action
-  const project = projects.find(
-    (item) =>
-      item._id?.toString() ===
-      action.payload?.project_id?.toString()
-  );
-
   const approveAction = async () => {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/actions/${action._id}/approve`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await axiosInstance.post(
+        `/api/actions/${action._id}/approve`
       );
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
         setStatus("approved");
-
-        // Refresh projects/tasks in parent
-        if (onActionComplete) {
-          onActionComplete();
-        }
       } else {
         alert(data.message || "Action failed");
       }
@@ -63,17 +43,11 @@ function ActionCard({ action, projects = [], onActionComplete }) {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/actions/${action._id}/reject`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await axiosInstance.post(
+        `/api/actions/${action._id}/reject`
       );
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
         setStatus("rejected");
@@ -88,28 +62,16 @@ function ActionCard({ action, projects = [], onActionComplete }) {
     }
   };
 
-  // ==========================================
-  // APPROVED STATE
-  // ==========================================
-
+  // Approved state
   if (status === "approved") {
     return (
       <div className="action-card success">
         <p>✅ Action approved and executed successfully.</p>
-
-        {project && (
-          <p>
-            <strong>Project:</strong> {project.name}
-          </p>
-        )}
       </div>
     );
   }
 
-  // ==========================================
-  // REJECTED STATE
-  // ==========================================
-
+  // Rejected state
   if (status === "rejected") {
     return (
       <div className="action-card rejected">
@@ -118,86 +80,106 @@ function ActionCard({ action, projects = [], onActionComplete }) {
     );
   }
 
-  // ==========================================
-  // PENDING STATE
-  // ==========================================
-
+  // Pending state
   return (
     <div className="action-card">
       <h4>⚡ Agent wants to make a change</h4>
 
       <p className="action-type">
-        {actionLabels[action.actionType] ||
-          action.actionType}
+        {actionLabels[action.actionType] || action.actionType}
       </p>
 
-      {/* PROJECT NAME */}
-      {project && (
-        <p>
-          <strong>Project:</strong> {project.name}
-        </p>
+      {/* Create Task */}
+      {action.actionType === "create_task" && action.payload && (
+        <div className="action-payload-info">
+          <p>
+            <strong>Task Title:</strong> {action.payload.title}
+          </p>
+          {action.payload.assignee_name && (
+            <p>
+              <strong>Assignee:</strong> {action.payload.assignee_name}
+            </p>
+          )}
+          {action.payload.priority && (
+            <p>
+              <strong>Priority:</strong> {action.payload.priority}
+            </p>
+          )}
+          {action.payload.deadline && (
+            <p>
+              <strong>Due Date:</strong>{" "}
+              {new Date(action.payload.deadline).toLocaleDateString()}
+            </p>
+          )}
+        </div>
       )}
 
-      {/* CREATE TASK */}
-      {action.actionType === "create_task" &&
-        action.payload?.title && (
-          <>
+      {/* Assign Task */}
+      {action.actionType === "assign_task" && action.payload && (
+        <div className="action-payload-info">
+          <p>
+            <strong>Assign To:</strong> {action.payload.assignee_name}
+          </p>
+          {action.payload.assignee_email && (
             <p>
-              <strong>Task:</strong>{" "}
-              {action.payload.title}
+              <strong>Email:</strong> {action.payload.assignee_email}
             </p>
+          )}
+        </div>
+      )}
 
-            {action.payload?.description && (
-              <p>
-                <strong>Description:</strong>{" "}
-                {action.payload.description}
-              </p>
-            )}
-          </>
-        )}
+      {/* Share Task */}
+      {action.actionType === "share_task" && action.payload && (
+        <div className="action-payload-info">
+          <p>
+            <strong>Share With:</strong> {action.payload.recipient_name} ({action.payload.recipient_email})
+          </p>
+          <p>
+            <strong>Role:</strong> {action.payload.role || "Collaborator"}
+          </p>
+          {action.payload.note && (
+            <p>
+              <strong>Note:</strong> "{action.payload.note}"
+            </p>
+          )}
+        </div>
+      )}
 
-      {/* UPDATE TASK STATUS */}
+      {/* Update Task Status */}
       {action.actionType === "update_task_status" &&
         action.payload?.status && (
           <p>
-            <strong>New Status:</strong>{" "}
-            {action.payload.status}
+            <strong>New Status:</strong> {action.payload.status}
           </p>
         )}
 
-      {/* UPDATE TASK PRIORITY */}
+      {/* Update Task Priority */}
       {action.actionType === "update_task_priority" &&
         action.payload?.priority && (
           <p>
-            <strong>New Priority:</strong>{" "}
-            {action.payload.priority}
+            <strong>New Priority:</strong> {action.payload.priority}
           </p>
         )}
 
-      {/* UPDATE TASK DEADLINE */}
+      {/* Update Task Deadline */}
       {action.actionType === "update_task_deadline" &&
         action.payload?.deadline && (
           <p>
             <strong>New Deadline:</strong>{" "}
-            {new Date(
-              action.payload.deadline
-            ).toLocaleDateString()}
+            {new Date(action.payload.deadline).toLocaleDateString()}
           </p>
         )}
 
-      {/* UPDATE PROJECT STATUS */}
-      {action.actionType ===
-        "update_project_status" &&
+      {/* Update Project Status */}
+      {action.actionType === "update_project_status" &&
         action.payload?.status && (
           <p>
-            <strong>New Status:</strong>{" "}
-            {action.payload.status}
+            <strong>New Status:</strong> {action.payload.status}
           </p>
         )}
 
       <p className="pending-status">
-        <strong>Status:</strong>{" "}
-        Pending approval
+        <strong>Status:</strong> Pending approval
       </p>
 
       <div className="action-buttons">
@@ -206,9 +188,7 @@ function ActionCard({ action, projects = [], onActionComplete }) {
           onClick={approveAction}
           disabled={loading}
         >
-          {loading
-            ? "Processing..."
-            : "✅ Approve"}
+          {loading ? "Processing..." : "✅ Approve"}
         </button>
 
         <button

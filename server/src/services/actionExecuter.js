@@ -5,32 +5,100 @@ export async function executeAction(action) {
   const { actionType, payload } = action;
 
   switch (actionType) {
-   case "create_task": {
-  const project = await Project.findById(payload.project_id);
+    case "create_task": {
+      const task = await Task.create({
+        projectId: payload.project_id,
+        title: payload.title,
+        description: payload.description || "",
+        status: payload.status || "todo",
+        priority: payload.priority || "medium",
+        deadline: payload.deadline ? new Date(payload.deadline) : null,
+        assignee: {
+          name: payload.assignee_name || "Unassigned",
+          email: payload.assignee_email || "",
+        },
+        createdByAgent: true,
+      });
 
-  if (!project) {
-    throw new Error("Project not found");
-  }
+      return {
+        success: true,
+        message: "Task created successfully",
+        data: task,
+      };
+    }
 
-  const task = await Task.create({
-    projectId: project._id,
-    title: payload.title,
-    description: payload.description || "",
-    priority: payload.priority || "medium",
-    deadline: payload.deadline || null,
-    createdByAgent: true,
-  });
+    case "assign_task": {
+      const task = await Task.findByIdAndUpdate(
+        payload.task_id,
+        {
+          assignee: {
+            name: payload.assignee_name || "Unassigned",
+            email: payload.assignee_email || "",
+          },
+        },
+        { new: true }
+      );
 
-  return {
-    success: true,
-    message: "Task created successfully",
-    data: task,
-    project: {
-      id: project._id,
-      name: project.name,
-    },
-  };
-}
+      if (!task) {
+        throw new Error("Task not found");
+      }
+
+      return {
+        success: true,
+        message: `Task assigned to ${payload.assignee_name || "Unassigned"}`,
+        data: task,
+      };
+    }
+
+    case "share_task": {
+      const task = await Task.findById(payload.task_id);
+      if (!task) {
+        throw new Error("Task not found");
+      }
+
+      const shareEntry = {
+        name: payload.recipient_name,
+        email: payload.recipient_email,
+        role: payload.role || "Collaborator",
+        sharedAt: new Date(),
+        sharedBy: "AI Agent",
+        note: payload.note || "",
+      };
+
+      if (!Array.isArray(task.sharedWith)) {
+        task.sharedWith = [];
+      }
+
+      const existingIndex = task.sharedWith.findIndex(
+        (s) => s.email && s.email.toLowerCase() === payload.recipient_email.toLowerCase()
+      );
+
+      if (existingIndex >= 0) {
+        task.sharedWith[existingIndex] = shareEntry;
+      } else {
+        task.sharedWith.push(shareEntry);
+      }
+
+      if (!Array.isArray(task.comments)) {
+        task.comments = [];
+      }
+
+      if (payload.note && payload.note.trim()) {
+        task.comments.push({
+          author: "AI Agent",
+          text: `Shared with ${payload.recipient_name} (${payload.role || "Collaborator"}): "${payload.note}"`,
+          createdAt: new Date(),
+        });
+      }
+
+      await task.save();
+
+      return {
+        success: true,
+        message: `Task shared with ${payload.recipient_name} successfully`,
+        data: task,
+      };
+    }
 
     case "update_task_status": {
       const task = await Task.findByIdAndUpdate(

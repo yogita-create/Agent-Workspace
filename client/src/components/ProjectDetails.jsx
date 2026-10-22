@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { SquarePen, Trash2, X } from "lucide-react";
+import { Plus, CheckCircle2, Clock, AlertTriangle, Layers } from "lucide-react";
+import TaskCard from "./TaskCard";
+import TaskModal from "./TaskModal";
+import ShareTaskModal from "./ShareTaskModal";
+import useOrganizationRole from "../hooks/useOrganizationRole";
+import axiosInstance from "../api/axiosInstance";
 
 import "./ProjectDetails.css";
-
-const API_URL = "http://localhost:5000";
 
 const emptyMember = {
   name: "",
@@ -12,145 +15,61 @@ const emptyMember = {
   role: "",
 };
 
-const emptyTask = {
-  title: "",
-  description: "",
-  priority: "medium",
-  status: "todo",
-  deadline: "",
-};
-
-// ==========================================
-// FORMAT STATUS
-// ==========================================
-
-const formatTaskStatus = (status) => {
-  switch (status) {
-    case "todo":
-      return "To Do";
-
-    case "in_progress":
-      return "In Progress";
-
-    case "done":
-      return "Done";
-
-    default:
-      return "Not Specified";
-  }
-};
-
-// ==========================================
-// FORMAT PRIORITY
-// ==========================================
-
-const formatTaskPriority = (priority) => {
-  switch (priority) {
-    case "low":
-      return "Low";
-
-    case "medium":
-      return "Medium";
-
-    case "high":
-      return "High";
-
-    default:
-      return "Not Specified";
-  }
-};
-
-// ==========================================
-// STATUS CLASS
-// ==========================================
-
-const getStatusClass = (status) => {
-  switch (status) {
-    case "todo":
-      return "status-todo";
-
-    case "in_progress":
-      return "status-in-progress";
-
-    case "done":
-      return "status-done";
-
-    default:
-      return "status-default";
-  }
-};
-
-// ==========================================
-// PRIORITY CLASS
-// ==========================================
-
-const getPriorityClass = (priority) => {
-  switch (priority) {
-    case "low":
-      return "priority-low";
-
-    case "medium":
-      return "priority-medium";
-
-    case "high":
-      return "priority-high";
-
-    default:
-      return "priority-default";
-  }
-};
-
 function ProjectDetails() {
   const { projectId } = useParams();
+
   const navigate = useNavigate();
+  const { role } = useOrganizationRole();
 
   // ==========================================
   // PROJECT STATE
   // ==========================================
 
   const [project, setProject] = useState(null);
-  const [tasks, setTasks] = useState([]);
 
-  const [loadingTasks, setLoadingTasks] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loading, setLoading] =
+    useState(true);
 
-  // ==========================================
-  // PROJECT EDIT STATE
-  // ==========================================
-
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  const [editProject, setEditProject] = useState({
-    name: "",
-    description: "",
-    techStack: "",
-    goal: "",
-    status: "Active",
-  });
-
-  const [editMembers, setEditMembers] = useState([]);
-  const [newMember, setNewMember] = useState(emptyMember);
-  const [editError, setEditError] = useState("");
+  const [error, setError] =
+    useState("");
 
   // ==========================================
-  // TASK EDIT STATE
+  // EDIT STATE
   // ==========================================
 
-  const [showTaskEditModal, setShowTaskEditModal] =
+  const [showEditModal, setShowEditModal] =
     useState(false);
 
-  const [editingTask, setEditingTask] = useState(null);
+  const [saving, setSaving] =
+    useState(false);
 
-  const [editTask, setEditTask] = useState(emptyTask);
+  const [editProject, setEditProject] =
+    useState({
+      name: "",
+      description: "",
+      techStack: "",
+      goal: "",
+      status: "Active",
+    });
 
-  const [savingTask, setSavingTask] = useState(false);
+  const [editMembers, setEditMembers] =
+    useState([]);
 
-  const [deletingTaskId, setDeletingTaskId] =
-    useState(null);
+  const [newMember, setNewMember] =
+    useState(emptyMember);
 
-  const [taskEditError, setTaskEditError] = useState("");
+  const [editError, setEditError] =
+    useState("");
+
+  // ==========================================
+  // PROJECT TASKS STATE
+  // ==========================================
+
+  const [tasks, setTasks] = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState(null);
+  const [taskToShare, setTaskToShare] = useState(null);
 
   // ==========================================
   // LOAD PROJECT
@@ -164,17 +83,8 @@ function ProjectDetails() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(
-          `${API_URL}/api/projects/${projectId}`
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to load project: ${response.status}`
-          );
-        }
-
-        const data = await response.json();
+        const response = await axiosInstance.get(`/api/projects/${projectId}`);
+        const data = response.data;
 
         if (ignore) return;
 
@@ -182,7 +92,8 @@ function ProjectDetails() {
           setProject(data.project);
         } else {
           throw new Error(
-            data.message || "Project not found"
+            data.message ||
+              "Project not found"
           );
         }
       } catch (error) {
@@ -193,7 +104,8 @@ function ProjectDetails() {
           );
 
           setError(
-            error.message ||
+            error.response?.data?.message ||
+              error.message ||
               "Failed to load project."
           );
         }
@@ -206,60 +118,6 @@ function ProjectDetails() {
 
     if (projectId) {
       fetchProject();
-    }
-
-    return () => {
-      ignore = true;
-    };
-  }, [projectId]);
-
-  // ==========================================
-  // LOAD PROJECT TASKS
-  // ==========================================
-
-  useEffect(() => {
-    let ignore = false;
-
-    const fetchProjectTasks = async () => {
-      try {
-        setLoadingTasks(true);
-
-        const response = await fetch(
-          `${API_URL}/api/projects/${projectId}/tasks`
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to load tasks: ${response.status}`
-          );
-        }
-
-        const data = await response.json();
-
-        if (ignore) return;
-
-        if (data.success) {
-          setTasks(data.tasks || []);
-        } else {
-          setTasks([]);
-        }
-      } catch (error) {
-        if (!ignore) {
-          console.error(
-            "Load project tasks error:",
-            error
-          );
-
-          setTasks([]);
-        }
-      } finally {
-        if (!ignore) {
-          setLoadingTasks(false);
-        }
-      }
-    };
-
-    if (projectId) {
       fetchProjectTasks();
     }
 
@@ -269,7 +127,67 @@ function ProjectDetails() {
   }, [projectId]);
 
   // ==========================================
-  // PROJECT EDIT
+  // FETCH PROJECT TASKS
+  // ==========================================
+
+  const fetchProjectTasks = async () => {
+    try {
+      setLoadingTasks(true);
+      const response = await axiosInstance.get(`/api/tasks?projectId=${projectId}`);
+      const data = response.data;
+      if (data.success) {
+        setTasks(data.tasks || []);
+      }
+    } catch (err) {
+      console.error("Fetch project tasks error:", err);
+    } finally {
+      setLoadingTasks(false);
+    }
+  };
+
+  const handleTaskStatusChange = async (taskId, newStatus) => {
+    try {
+      setTasks((prev) =>
+        prev.map((t) => (t._id === taskId ? { ...t, status: newStatus } : t))
+      );
+      await axiosInstance.put(`/api/tasks/${taskId}`, { status: newStatus });
+    } catch (err) {
+      console.error("Update task status error:", err);
+      fetchProjectTasks();
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    try {
+      setTasks((prev) => prev.filter((t) => t._id !== taskId));
+      await axiosInstance.delete(`/api/tasks/${taskId}`);
+    } catch (err) {
+      console.error("Delete task error:", err);
+      fetchProjectTasks();
+    }
+  };
+
+  const handleTaskSaved = (savedTask) => {
+    setTasks((prev) => {
+      const idx = prev.findIndex((t) => t._id === savedTask._id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = savedTask;
+        return next;
+      }
+      return [savedTask, ...prev];
+    });
+  };
+
+  const handleTaskShared = (updatedTask) => {
+    setTasks((prev) =>
+      prev.map((t) => (t._id === updatedTask._id ? updatedTask : t))
+    );
+  };
+
+  // ==========================================
+  // OPEN EDIT MODAL
   // ==========================================
 
   const openEditModal = () => {
@@ -277,10 +195,13 @@ function ProjectDetails() {
 
     setEditProject({
       name: project.name || "",
-      description: project.description || "",
-      techStack: project.techStack || "",
+      description:
+        project.description || "",
+      techStack:
+        project.techStack || "",
       goal: project.goal || "",
-      status: project.status || "Active",
+      status:
+        project.status || "Active",
     });
 
     setEditMembers(
@@ -290,17 +211,29 @@ function ProjectDetails() {
     );
 
     setNewMember(emptyMember);
+
     setEditError("");
+
     setShowEditModal(true);
   };
+
+  // ==========================================
+  // CLOSE EDIT MODAL
+  // ==========================================
 
   const closeEditModal = () => {
     if (saving) return;
 
     setShowEditModal(false);
+
     setEditError("");
+
     setNewMember(emptyMember);
   };
+
+  // ==========================================
+  // HANDLE EDIT PROJECT INPUT
+  // ==========================================
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
@@ -312,7 +245,7 @@ function ProjectDetails() {
   };
 
   // ==========================================
-  // MEMBER INPUT
+  // HANDLE MEMBER INPUT
   // ==========================================
 
   const handleNewMemberChange = (e) => {
@@ -323,6 +256,10 @@ function ProjectDetails() {
       [name]: value,
     }));
   };
+
+  // ==========================================
+  // ADD MEMBER
+  // ==========================================
 
   const addMember = () => {
     if (
@@ -340,15 +277,23 @@ function ProjectDetails() {
     setEditMembers((prev) => [
       ...prev,
       {
-        name: newMember.name.trim(),
-        email: newMember.email.trim(),
-        role: newMember.role.trim(),
+        name:
+          newMember.name.trim(),
+        email:
+          newMember.email.trim(),
+        role:
+          newMember.role.trim(),
       },
     ]);
 
     setNewMember(emptyMember);
+
     setEditError("");
   };
+
+  // ==========================================
+  // REMOVE MEMBER
+  // ==========================================
 
   const removeMember = (indexToRemove) => {
     setEditMembers((prev) =>
@@ -376,57 +321,40 @@ function ProjectDetails() {
 
     try {
       setSaving(true);
+
       setEditError("");
 
-      const response = await fetch(
-        `${API_URL}/api/projects/${projectId}`,
+      const response = await axiosInstance.put(
+        `/api/projects/${projectId}`,
         {
-          method: "PUT",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            name:
-              editProject.name.trim(),
-
-            description:
-              editProject.description.trim(),
-
-            techStack:
-              editProject.techStack.trim(),
-
-            goal:
-              editProject.goal.trim(),
-
-            status:
-              editProject.status,
-
-            members:
-              editMembers,
-          }),
+          name: editProject.name.trim(),
+          description: editProject.description.trim(),
+          techStack: editProject.techStack.trim(),
+          goal: editProject.goal.trim(),
+          status: editProject.status,
+          members: editMembers,
         }
       );
 
-      const data =
-        await response.json();
+      const data = response.data;
 
-      if (
-        !response.ok ||
-        !data.success
-      ) {
+      if (!data.success) {
         throw new Error(
           data.message ||
             "Failed to update project"
         );
       }
 
+      // Update project UI immediately
       setProject(data.project);
 
+      // Close modal
       setShowEditModal(false);
 
+      console.log(
+        "Project updated:",
+        data.project
+      );
     } catch (error) {
       console.error(
         "Update project error:",
@@ -434,234 +362,12 @@ function ProjectDetails() {
       );
 
       setEditError(
-        error.message ||
+        error.response?.data?.message ||
+          error.message ||
           "Failed to update project."
       );
     } finally {
       setSaving(false);
-    }
-  };
-
-  // ==========================================
-  // OPEN TASK EDIT MODAL
-  // ==========================================
-
-  const openTaskEditModal = (task) => {
-    setEditingTask(task);
-
-    setEditTask({
-      title: task.title || "",
-
-      description:
-        task.description || "",
-
-      priority:
-        task.priority || "medium",
-
-      status:
-        task.status || "todo",
-
-      deadline:
-        task.deadline
-          ? new Date(task.deadline)
-              .toISOString()
-              .split("T")[0]
-          : "",
-    });
-
-    setTaskEditError("");
-
-    setShowTaskEditModal(true);
-  };
-
-  // ==========================================
-  // CLOSE TASK EDIT MODAL
-  // ==========================================
-
-  const closeTaskEditModal = () => {
-    if (savingTask) return;
-
-    setShowTaskEditModal(false);
-
-    setEditingTask(null);
-
-    setEditTask(emptyTask);
-
-    setTaskEditError("");
-  };
-
-  // ==========================================
-  // HANDLE TASK EDIT INPUT
-  // ==========================================
-
-  const handleTaskEditChange = (e) => {
-    const { name, value } = e.target;
-
-    setEditTask((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  // ==========================================
-  // SAVE TASK
-  // PUT /api/tasks/:taskId
-  // ==========================================
-
-  const handleSaveTask = async (e) => {
-    e.preventDefault();
-
-    if (!editingTask?._id) {
-      return;
-    }
-
-    if (!editTask.title.trim()) {
-      setTaskEditError(
-        "Task title is required."
-      );
-
-      return;
-    }
-
-    try {
-      setSavingTask(true);
-      setTaskEditError("");
-
-      const response = await fetch(
-        `${API_URL}/api/tasks/${editingTask._id}`,
-        {
-          method: "PUT",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            title:
-              editTask.title.trim(),
-
-            description:
-              editTask.description.trim(),
-
-            priority:
-              editTask.priority,
-
-            status:
-              editTask.status,
-
-            deadline:
-              editTask.deadline
-                ? editTask.deadline
-                : null,
-          }),
-        }
-      );
-
-      const data =
-        await response.json();
-
-      if (
-        !response.ok ||
-        !data.success
-      ) {
-        throw new Error(
-          data.message ||
-            "Failed to update task"
-        );
-      }
-
-      // UPDATE TASK IN PROJECT TASK LIST
-
-      setTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task._id === editingTask._id
-            ? {
-                ...task,
-                ...data.task,
-              }
-            : task
-        )
-      );
-
-      closeTaskEditModal();
-
-    } catch (error) {
-      console.error(
-        "Update task error:",
-        error
-      );
-
-      setTaskEditError(
-        error.message ||
-          "Failed to update task."
-      );
-    } finally {
-      setSavingTask(false);
-    }
-  };
-
-  // ==========================================
-  // DELETE TASK
-  // DELETE /api/tasks/:taskId
-  // ==========================================
-
-  const handleDeleteTask = async (task) => {
-    if (!task?._id) {
-      return;
-    }
-
-    const confirmed =
-      window.confirm(
-        `Are you sure you want to delete "${task.title}"?`
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      setDeletingTaskId(task._id);
-
-      const response = await fetch(
-        `${API_URL}/api/tasks/${task._id}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      const data =
-        await response.json();
-
-      if (
-        !response.ok ||
-        !data.success
-      ) {
-        throw new Error(
-          data.message ||
-            "Failed to delete task"
-        );
-      }
-
-      setTasks((prevTasks) =>
-        prevTasks.filter(
-          (item) =>
-            item._id !== task._id
-        )
-      );
-
-    } catch (error) {
-      console.error(
-        "Delete task error:",
-        error
-      );
-
-      alert(
-        error.message ||
-          "Failed to delete task."
-      );
-    } finally {
-      setDeletingTaskId(null);
     }
   };
 
@@ -673,7 +379,9 @@ function ProjectDetails() {
     return (
       <main className="project-details-page">
         <div className="project-details-message">
-          <p>Loading project...</p>
+          <p>
+            Loading project...
+          </p>
         </div>
       </main>
     );
@@ -737,7 +445,7 @@ function ProjectDetails() {
   }
 
   // ==========================================
-  // UI
+  // PROJECT DETAILS
   // ==========================================
 
   return (
@@ -774,16 +482,19 @@ function ProjectDetails() {
         <div className="project-header-actions">
 
           <span className="project-details-status">
-            {project.status || "Active"}
+            {project.status ||
+              "Active"}
           </span>
 
-          <button
-            type="button"
-            className="edit-project-btn"
-            onClick={openEditModal}
-          >
-            ✏️ Edit Project
-          </button>
+          {role !== "employee" && (
+            <button
+              type="button"
+              className="edit-project-btn"
+              onClick={openEditModal}
+            >
+              ✏️ Edit Project
+            </button>
+          )}
 
         </div>
 
@@ -809,6 +520,7 @@ function ProjectDetails() {
 
         </div>
 
+
         <div className="project-info-card">
 
           <h3>
@@ -821,6 +533,7 @@ function ProjectDetails() {
           </p>
 
         </div>
+
 
         <div className="project-info-card">
 
@@ -867,6 +580,7 @@ function ProjectDetails() {
           </span>
 
         </div>
+
 
         {project.members &&
         project.members.length > 0 ? (
@@ -927,220 +641,71 @@ function ProjectDetails() {
 
 
       {/* =====================================
-          PROJECT WORKSPACE
+          PROJECT TASKS & WORKSPACE BOARD
       ===================================== */}
 
       <section className="project-workspace-section">
-
-        <h2>
-          Project Workspace
-        </h2>
-
-        <div className="project-tasks-section">
-
-          <div className="section-header">
-
-            <div>
-
-              <h3>
-                Project Tasks
-              </h3>
-
-              <p>
-                Tasks associated with this project
-              </p>
-
-            </div>
-
-            <span>
-              {tasks.length}{" "}
-              {tasks.length === 1
-                ? "Task"
-                : "Tasks"}
-            </span>
-
+        <div className="project-workspace-header">
+          <div className="project-workspace-title">
+            <h2>Project Tasks & Board</h2>
+            <p>
+              Manage, assign, and share tasks specific to {project.name}
+            </p>
           </div>
 
-
-          {loadingTasks ? (
-
-            <div className="tasks-loading">
-
-              <p>
-                Loading tasks...
-              </p>
-
-            </div>
-
-          ) : tasks.length === 0 ? (
-
-            <div className="no-members">
-
-              <p>
-                No tasks have been added
-                to this project yet.
-              </p>
-
-            </div>
-
-          ) : (
-
-            <div className="project-tasks-grid">
-
-              {tasks.map((task) => (
-
-                <div
-                  className="project-task-card"
-                  key={task._id}
-                >
-
-                  {/* TASK HEADER */}
-
-                  <div className="task-card-header">
-
-                    <h3>
-                      {task.title}
-                    </h3>
-
-                    <div className="task-card-actions">
-
-                      <button
-                        type="button"
-                        className="task-edit-btn"
-                        onClick={() =>
-                          openTaskEditModal(task)
-                        }
-                        title="Edit task"
-                      >
-                        <SquarePen
-                          size={16}
-                        />
-                      </button>
-
-                      <button
-                        type="button"
-                        className="task-delete-btn"
-                        onClick={() =>
-                          handleDeleteTask(task)
-                        }
-                        disabled={
-                          deletingTaskId ===
-                          task._id
-                        }
-                        title="Delete task"
-                      >
-                        <Trash2
-                          size={16}
-                        />
-                      </button>
-
-                    </div>
-
-                  </div>
-
-
-                  {/* TASK DESCRIPTION */}
-
-                  <div className="task-description">
-
-                    {task.description ? (
-
-                      <p>
-                        {task.description}
-                      </p>
-
-                    ) : (
-
-                      <p className="no-description">
-                        No description provided.
-                      </p>
-
-                    )}
-
-                  </div>
-
-
-                  {/* TASK STATUS + PRIORITY */}
-
-                  <div className="task-card-meta">
-
-                    <div className="task-meta-item">
-
-                      <span className="task-meta-label">
-                        Status
-                      </span>
-
-                      <span
-                        className={`task-status-badge ${getStatusClass(
-                          task.status
-                        )}`}
-                      >
-                        {formatTaskStatus(
-                          task.status
-                        )}
-                      </span>
-
-                    </div>
-
-
-                    <div className="task-meta-item">
-
-                      <span className="task-meta-label">
-                        Priority
-                      </span>
-
-                      <span
-                        className={`task-priority-badge ${getPriorityClass(
-                          task.priority
-                        )}`}
-                      >
-                        {formatTaskPriority(
-                          task.priority
-                        )}
-                      </span>
-
-                    </div>
-
-                  </div>
-
-
-                  {/* DEADLINE */}
-
-                  <div className="task-deadline">
-
-                    {task.deadline ? (
-
-                      <p>
-                        <strong>
-                          Deadline:
-                        </strong>{" "}
-
-                        {new Date(
-                          task.deadline
-                        ).toLocaleDateString()}
-
-                      </p>
-
-                    ) : (
-
-                      <p className="no-deadline">
-                        No deadline set
-                      </p>
-
-                    )}
-
-                  </div>
-
-                </div>
-
-              ))}
-
-            </div>
-
-          )}
-
+          <button
+            type="button"
+            className="project-add-task-btn"
+            onClick={() => setShowCreateTaskModal(true)}
+          >
+            <Plus size={15} />
+            <span>+ Add Task</span>
+          </button>
         </div>
 
+        {loadingTasks ? (
+          <p style={{ color: "#64748b", padding: "20px 0" }}>Loading project tasks...</p>
+        ) : (
+          <div className="project-tasks-grid">
+            {[
+              { id: "todo", title: "To Do" },
+              { id: "in_progress", title: "In Progress" },
+              { id: "in_review", title: "In Review" },
+              { id: "done", title: "Done" },
+            ].map((col) => {
+              const colTasks = tasks.filter(
+                (t) => (t.status || "todo") === col.id
+              );
+
+              return (
+                <div key={col.id} className="project-kanban-col">
+                  <div className="project-kanban-col-header">
+                    <h4>{col.title}</h4>
+                    <span className="col-badge">{colTasks.length}</span>
+                  </div>
+
+                  {colTasks.length === 0 ? (
+                    <div className="project-col-empty">
+                      No tasks
+                    </div>
+                  ) : (
+                    colTasks.map((t) => (
+                      <TaskCard
+                        key={t._id}
+                        task={t}
+                        showProject={false}
+                        onShare={(task) => setTaskToShare(task)}
+                        onEdit={(task) => setTaskToEdit(task)}
+                        onDelete={handleDeleteTask}
+                        onStatusChange={handleTaskStatusChange}
+                      />
+                    ))
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
 
@@ -1153,23 +718,21 @@ function ProjectDetails() {
         <div
           className="edit-modal-overlay"
           onMouseDown={(e) => {
-
             if (
-              e.target ===
-              e.currentTarget
+              e.target === e.currentTarget
             ) {
               closeEditModal();
             }
-
           }}
         >
 
           <div className="edit-project-modal">
 
+            {/* MODAL HEADER */}
+
             <div className="edit-modal-header">
 
               <div>
-
                 <h2>
                   Edit Project
                 </h2>
@@ -1178,7 +741,6 @@ function ProjectDetails() {
                   Update your project
                   information
                 </p>
-
               </div>
 
               <button
@@ -1193,6 +755,8 @@ function ProjectDetails() {
             </div>
 
 
+            {/* FORM */}
+
             <form
               onSubmit={
                 handleSaveChanges
@@ -1200,468 +764,188 @@ function ProjectDetails() {
             >
 
               {editError && (
-
                 <div className="edit-form-error">
                   {editError}
                 </div>
-
               )}
 
-
-              <label>
-                Project Name *
-              </label>
-
-              <input
-                type="text"
-                name="name"
-                value={
-                  editProject.name
-                }
-                onChange={
-                  handleEditChange
-                }
-                placeholder="Enter project name"
-                required
-              />
-
-
-              <label>
-                Description
-              </label>
-
-              <textarea
-                name="description"
-                value={
-                  editProject.description
-                }
-                onChange={
-                  handleEditChange
-                }
-                placeholder="Describe your project"
-                rows="3"
-              />
-
-
-              <label>
-                Tech Stack
-              </label>
-
-              <input
-                type="text"
-                name="techStack"
-                value={
-                  editProject.techStack
-                }
-                onChange={
-                  handleEditChange
-                }
-                placeholder="React, Node.js, MongoDB"
-              />
-
-
-              <label>
-                Project Goal
-              </label>
-
-              <textarea
-                name="goal"
-                value={
-                  editProject.goal
-                }
-                onChange={
-                  handleEditChange
-                }
-                placeholder="What is the goal of this project?"
-                rows="3"
-              />
-
-
-              <label>
-                Project Status
-              </label>
-
-              <select
-                name="status"
-                value={
-                  editProject.status
-                }
-                onChange={
-                  handleEditChange
-                }
-              >
-
-                <option value="Active">
-                  Active
-                </option>
-
-                <option value="Completed">
-                  Completed
-                </option>
-
-                <option value="On Hold">
-                  On Hold
-                </option>
-
-              </select>
-
-
-              <label>
-                Project Members
-              </label>
-
-              <div className="edit-member-input-row">
-
+              {/* PROJECT NAME */}
+              <div className="edit-form-group">
+                <label>Project Name *</label>
                 <input
                   type="text"
                   name="name"
-                  value={
-                    newMember.name
-                  }
-                  onChange={
-                    handleNewMemberChange
-                  }
-                  placeholder="Name"
+                  value={editProject.name}
+                  onChange={handleEditChange}
+                  placeholder="Enter project name"
+                  required
                 />
-
-                <input
-                  type="email"
-                  name="email"
-                  value={
-                    newMember.email
-                  }
-                  onChange={
-                    handleNewMemberChange
-                  }
-                  placeholder="Email"
-                />
-
-                <input
-                  type="text"
-                  name="role"
-                  value={
-                    newMember.role
-                  }
-                  onChange={
-                    handleNewMemberChange
-                  }
-                  placeholder="Role"
-                />
-
-                <button
-                  type="button"
-                  className="edit-add-member-btn"
-                  onClick={
-                    addMember
-                  }
-                >
-                  + Add
-                </button>
-
               </div>
 
+              {/* DESCRIPTION */}
+              <div className="edit-form-group">
+                <label>Description</label>
+                <textarea
+                  name="description"
+                  value={editProject.description}
+                  onChange={handleEditChange}
+                  placeholder="Describe your project"
+                  rows="3"
+                />
+              </div>
 
-              {editMembers.length > 0 && (
+              {/* TECH STACK & STATUS ROW */}
+              <div className="edit-form-row">
+                <div className="edit-form-group">
+                  <label>Tech Stack</label>
+                  <input
+                    type="text"
+                    name="techStack"
+                    value={editProject.techStack}
+                    onChange={handleEditChange}
+                    placeholder="React, Node.js, MongoDB"
+                  />
+                </div>
 
-                <div className="edit-members-list">
+                <div className="edit-form-group">
+                  <label>Project Status</label>
+                  <select
+                    name="status"
+                    value={editProject.status}
+                    onChange={handleEditChange}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Completed">Completed</option>
+                    <option value="On Hold">On Hold</option>
+                  </select>
+                </div>
+              </div>
 
-                  {editMembers.map(
-                    (member, index) => (
+              {/* GOAL */}
+              <div className="edit-form-group">
+                <label>Project Goal</label>
+                <textarea
+                  name="goal"
+                  value={editProject.goal}
+                  onChange={handleEditChange}
+                  placeholder="What is the goal of this project?"
+                  rows="2"
+                />
+              </div>
 
+              {/* MEMBERS */}
+              <div className="edit-form-group">
+                <label>Project Members</label>
+                <div className="edit-member-input-row">
+                  <input
+                    type="text"
+                    name="name"
+                    value={newMember.name}
+                    onChange={handleNewMemberChange}
+                    placeholder="Name"
+                  />
+                  <input
+                    type="email"
+                    name="email"
+                    value={newMember.email}
+                    onChange={handleNewMemberChange}
+                    placeholder="Email"
+                  />
+                  <input
+                    type="text"
+                    name="role"
+                    value={newMember.role}
+                    onChange={handleNewMemberChange}
+                    placeholder="Role"
+                  />
+                  <button
+                    type="button"
+                    className="edit-add-member-btn"
+                    onClick={addMember}
+                  >
+                    + Add
+                  </button>
+                </div>
+
+                {/* EXISTING MEMBERS */}
+                {editMembers.length > 0 && (
+                  <div className="edit-members-list">
+                    {editMembers.map((member, index) => (
                       <div
                         className="edit-member-item"
                         key={`${member.email}-${index}`}
                       >
-
-                        <div>
-
-                          <strong>
-                            {member.name}
-                          </strong>
-
-                          <span>
-                            {member.email}
-                          </span>
-
-                          <small>
-                            {member.role}
-                          </small>
-
+                        <div className="edit-member-info">
+                          <strong>{member.name}</strong>
+                          <span>{member.email}</span>
+                          <small>{member.role}</small>
                         </div>
-
                         <button
                           type="button"
                           className="edit-remove-member-btn"
-                          onClick={() =>
-                            removeMember(
-                              index
-                            )
-                          }
+                          onClick={() => removeMember(index)}
+                          title="Remove member"
                         >
                           ×
                         </button>
-
                       </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-                    )
-                  )}
-
-                </div>
-
-              )}
-
-
+              {/* MODAL ACTIONS */}
               <div className="edit-modal-actions">
-
                 <button
                   type="button"
                   className="edit-cancel-btn"
-                  onClick={
-                    closeEditModal
-                  }
+                  onClick={closeEditModal}
                   disabled={saving}
                 >
                   Cancel
                 </button>
-
                 <button
                   type="submit"
                   className="edit-save-btn"
                   disabled={saving}
                 >
-                  {saving
-                    ? "Saving..."
-                    : "Save Changes"}
+                  {saving ? "Saving..." : "Save Changes"}
                 </button>
-
               </div>
-
             </form>
-
           </div>
-
         </div>
-
       )}
 
+      {/* CREATE TASK MODAL */}
+      {showCreateTaskModal && (
+        <TaskModal
+          defaultProjectId={projectId}
+          projects={[project]}
+          onClose={() => setShowCreateTaskModal(false)}
+          onTaskSaved={handleTaskSaved}
+        />
+      )}
 
-      {/* =====================================
-          EDIT TASK MODAL
-      ===================================== */}
+      {/* EDIT TASK MODAL */}
+      {taskToEdit && (
+        <TaskModal
+          taskToEdit={taskToEdit}
+          defaultProjectId={projectId}
+          projects={[project]}
+          onClose={() => setTaskToEdit(null)}
+          onTaskSaved={handleTaskSaved}
+        />
+      )}
 
-      {showTaskEditModal && (
-
-        <div
-          className="task-edit-modal-overlay"
-          onMouseDown={(e) => {
-
-            if (
-              e.target ===
-              e.currentTarget
-            ) {
-              closeTaskEditModal();
-            }
-
-          }}
-        >
-
-          <div className="task-edit-modal">
-
-            <div className="task-edit-modal-header">
-
-              <div>
-
-                <h2>
-                  Edit Task
-                </h2>
-
-                <p>
-                  Update task information
-                </p>
-
-              </div>
-
-              <button
-                type="button"
-                className="task-modal-close"
-                onClick={
-                  closeTaskEditModal
-                }
-                disabled={savingTask}
-              >
-                <X size={20} />
-              </button>
-
-            </div>
-
-
-            <form
-              onSubmit={
-                handleSaveTask
-              }
-            >
-
-              {taskEditError && (
-
-                <div className="task-edit-error">
-                  {taskEditError}
-                </div>
-
-              )}
-
-
-              <label>
-                Task Title *
-              </label>
-
-              <input
-                type="text"
-                name="title"
-                value={
-                  editTask.title
-                }
-                onChange={
-                  handleTaskEditChange
-                }
-                placeholder="Enter task title"
-                required
-              />
-
-
-              <label>
-                Description
-              </label>
-
-              <textarea
-                name="description"
-                value={
-                  editTask.description
-                }
-                onChange={
-                  handleTaskEditChange
-                }
-                placeholder="Enter task description"
-                rows="4"
-              />
-
-
-              <div className="task-edit-meta-row">
-
-                <div className="task-edit-field">
-
-                  <label>
-                    Status
-                  </label>
-
-                  <select
-                    name="status"
-                    value={
-                      editTask.status
-                    }
-                    onChange={
-                      handleTaskEditChange
-                    }
-                  >
-
-                    <option value="todo">
-                      To Do
-                    </option>
-
-                    <option value="in_progress">
-                      In Progress
-                    </option>
-
-                    <option value="done">
-                      Done
-                    </option>
-
-                  </select>
-
-                </div>
-
-
-                <div className="task-edit-field">
-
-                  <label>
-                    Priority
-                  </label>
-
-                  <select
-                    name="priority"
-                    value={
-                      editTask.priority
-                    }
-                    onChange={
-                      handleTaskEditChange
-                    }
-                  >
-
-                    <option value="low">
-                      Low
-                    </option>
-
-                    <option value="medium">
-                      Medium
-                    </option>
-
-                    <option value="high">
-                      High
-                    </option>
-
-                  </select>
-
-                </div>
-
-              </div>
-
-
-              <label>
-                Deadline
-              </label>
-
-              <input
-                type="date"
-                name="deadline"
-                value={
-                  editTask.deadline
-                }
-                onChange={
-                  handleTaskEditChange
-                }
-              />
-
-
-              <div className="task-edit-modal-actions">
-
-                <button
-                  type="button"
-                  className="task-cancel-btn"
-                  onClick={
-                    closeTaskEditModal
-                  }
-                  disabled={savingTask}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="task-save-btn"
-                  disabled={savingTask}
-                >
-                  {savingTask
-                    ? "Saving..."
-                    : "Save Changes"}
-                </button>
-
-              </div>
-
-            </form>
-
-          </div>
-
-        </div>
-
+      {/* SHARE TASK MODAL */}
+      {taskToShare && (
+        <ShareTaskModal
+          task={taskToShare}
+          availableMembers={project?.members || []}
+          onClose={() => setTaskToShare(null)}
+          onTaskUpdated={handleTaskShared}
+        />
       )}
 
     </main>
