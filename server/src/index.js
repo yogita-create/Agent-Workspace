@@ -24,7 +24,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/invites", inviteRoutes);
-app.use("/api/projects", projectRoutes);
+app.use("/api/projects", ProjectRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/epics", epicRoutes);
 app.use("/api/stories", storyRoutes);
