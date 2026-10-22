@@ -346,6 +346,24 @@
   background: var(--bg-tertiary, #f8fafc);
 }
 
+.task-table-story-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #0284c7;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 1px 6px;
+  border-radius: 4px;
+  width: fit-content;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
 /* Responsive */
 @media (max-width: 1100px) {
   .kanban-board {

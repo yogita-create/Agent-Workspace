@@ -63,7 +63,12 @@ router.get("/", async (req, res) => {
     // 2. Fetch standalone tasks (where storyId is null / undefined)
     const tasks = await Task.find({
       projectId,
-      $or: [{ storyId: null }, { storyId: { $exists: false } }],
+      $or: [
+        { story: null },
+        { storyId: null },
+        { story: { $exists: false } },
+        { storyId: { $exists: false } },
+      ],
     })
       .populate("projectId", "name status organizationId members")
       .sort({ createdAt: -1 })

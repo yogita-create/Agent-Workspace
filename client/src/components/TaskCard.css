@@ -110,7 +110,14 @@
   overflow: hidden;
 }
 
-/* Project Pill */
+/* Project & Story Pills Row */
+.task-card-context-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .task-project-pill {
   display: inline-flex;
   align-items: center;
@@ -123,6 +130,27 @@
   border-radius: 4px;
   width: fit-content;
   font-weight: 600;
+}
+
+.task-story-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #0284c7;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 2px 8px;
+  border-radius: 4px;
+  width: fit-content;
+  max-width: 170px;
+  font-weight: 600;
+}
+
+.task-story-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Status & Date Row */

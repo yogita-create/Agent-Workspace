@@ -177,20 +177,56 @@ router.get("/", async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // Attach linked task counts per story
+    // Attach linked task counts and done counts per story
     const storyIds = stories.map((s) => s._id);
-    const taskCounts = await Task.aggregate([
-      { $match: { storyId: { $in: storyIds } } },
-      { $group: { _id: "$storyId", count: { $sum: 1 } } },
+    const taskStats = await Task.aggregate([
+      {
+        $match: {
+          $or: [
+            { story: { $in: storyIds } },
+            { storyId: { $in: storyIds } },
+          ],
+        },
+      },
+      {
+        $project: {
+          storyKey: { $ifNull: ["$story", "$storyId"] },
+          isDone: {
+            $cond: [
+              { $in: ["$status", ["done", "Done", "completed", "Completed"]] },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$storyKey",
+          taskCount: { $sum: 1 },
+          doneCount: { $sum: "$isDone" },
+        },
+      },
     ]);
-    const taskCountMap = new Map(
-      taskCounts.map((tc) => [tc._id.toString(), tc.count])
+
+    const taskStatMap = new Map(
+      taskStats.map((tc) => [
+        tc._id.toString(),
+        { taskCount: tc.taskCount, doneCount: tc.doneCount },
+      ])
     );
 
-    const enrichedStories = stories.map((s) => ({
-      ...s,
-      taskCount: taskCountMap.get(s._id.toString()) || 0,
-    }));
+    const enrichedStories = stories.map((s) => {
+      const stat = taskStatMap.get(s._id.toString()) || {
+        taskCount: 0,
+        doneCount: 0,
+      };
+      return {
+        ...s,
+        taskCount: stat.taskCount,
+        doneCount: stat.doneCount,
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -239,9 +275,17 @@ router.get("/:id", async (req, res) => {
       }
     }
 
-    const taskCount = await Task.countDocuments({ storyId: story._id });
+    const taskCount = await Task.countDocuments({
+      $or: [{ story: story._id }, { storyId: story._id }],
+    });
+    const doneCount = await Task.countDocuments({
+      $or: [{ story: story._id }, { storyId: story._id }],
+      status: { $in: ["done", "Done", "completed", "Completed"] },
+    });
+
     const storyObj = story.toObject();
     storyObj.taskCount = taskCount;
+    storyObj.doneCount = doneCount;
 
     res.status(200).json({
       success: true,
@@ -252,6 +296,65 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch story",
+      error: error.message,
+    });
+  }
+});
+
+// ==========================================
+// GET TASKS OF A STORY
+// GET /api/stories/:id/tasks
+// ==========================================
+router.get("/:id/tasks", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid story ID",
+      });
+    }
+
+    const story = await Story.findById(id).populate("projectId");
+    if (!story) {
+      return res.status(404).json({
+        success: false,
+        message: "Story not found",
+      });
+    }
+
+    if (story.projectId && story.projectId.organizationId) {
+      const membership = await Membership.findOne({
+        userId: req.user.id,
+        organizationId: story.projectId.organizationId,
+      });
+
+      if (!membership) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Access denied. You are not a member of this project's organization",
+        });
+      }
+    }
+
+    const tasks = await Task.find({
+      $or: [{ story: story._id }, { storyId: story._id }],
+    })
+      .populate("projectId", "name status organizationId members")
+      .populate("story", "title epicId status priority")
+      .sort({ createdAt: 1 });
+
+    res.status(200).json({
+      success: true,
+      tasks,
+    });
+  } catch (error) {
+    console.error("Get story tasks error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch tasks for story",
       error: error.message,
     });
   }

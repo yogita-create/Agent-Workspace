@@ -15,6 +15,11 @@ const storySchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    epic: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Epic",
+      default: null,
+    },
     epicId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Epic",
@@ -72,6 +77,14 @@ const storySchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+storySchema.pre("save", function () {
+  if (this.epic && !this.epicId) {
+    this.epicId = this.epic;
+  } else if (this.epicId && !this.epic) {
+    this.epic = this.epicId;
+  }
+});
 
 const Story = mongoose.models.Story || mongoose.model("Story", storySchema);
 export default Story;

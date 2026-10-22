@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   Layers,
   Share2,
+  Bookmark,
 } from "lucide-react";
 import TaskCard from "./TaskCard";
 import TaskModal from "./TaskModal";
@@ -35,10 +36,21 @@ function Tasks() {
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createTaskStoryId, setCreateTaskStoryId] = useState("");
+  const [createTaskProjectId, setCreateTaskProjectId] = useState("");
   const [showCreateEpicModal, setShowCreateEpicModal] = useState(false);
   const [epicRefreshTrigger, setEpicRefreshTrigger] = useState(0);
   const [taskToEdit, setTaskToEdit] = useState(null);
   const [taskToShare, setTaskToShare] = useState(null);
+
+  // Open Create Task pre-selected with Story/Project from EpicView
+  const handleOpenCreateTaskFromStory = ({ storyId, projectId }) => {
+    setCreateTaskStoryId(storyId || "");
+    if (projectId) {
+      setCreateTaskProjectId(projectId);
+    }
+    setShowCreateModal(true);
+  };
 
   // Load Tasks and Projects
   const fetchTasksAndProjects = async () => {
@@ -91,6 +103,8 @@ function Tasks() {
       if (!data.success) {
         // Revert on error
         fetchTasksAndProjects();
+      } else {
+        setEpicRefreshTrigger((prev) => prev + 1);
       }
     } catch (err) {
       console.error("Status update error:", err);
@@ -105,6 +119,7 @@ function Tasks() {
     try {
       setTasks((prev) => prev.filter((t) => t._id !== taskId));
       await axiosInstance.delete(`/api/tasks/${taskId}`);
+      setEpicRefreshTrigger((prev) => prev + 1);
     } catch (err) {
       console.error("Delete task error:", err);
       fetchTasksAndProjects();
@@ -400,6 +415,7 @@ function Tasks() {
           projects={projects}
           refreshTrigger={epicRefreshTrigger}
           onOpenCreateEpic={() => setShowCreateEpicModal(true)}
+          onOpenCreateTask={handleOpenCreateTaskFromStory}
         />
       ) : viewMode === "board" ? (
         <section className="kanban-board">
@@ -472,7 +488,18 @@ function Tasks() {
                       </span>
                     </td>
                     <td>
-                      <strong>{task.title}</strong>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <strong>{task.title}</strong>
+                        {task.story && (
+                          <span
+                            className="task-table-story-badge"
+                            title={`User Story: ${task.story.title || task.story}`}
+                          >
+                            <Bookmark size={11} />
+                            <span>{task.story.title || "Story"}</span>
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td>{task.projectId?.name || "—"}</td>
                     <td>
@@ -553,8 +580,20 @@ function Tasks() {
       {showCreateModal && (
         <TaskModal
           projects={projects}
-          onClose={() => setShowCreateModal(false)}
-          onTaskSaved={handleTaskSaved}
+          defaultStoryId={createTaskStoryId}
+          defaultProjectId={
+            createTaskProjectId ||
+            (selectedProjectId !== "all" ? selectedProjectId : "")
+          }
+          onClose={() => {
+            setShowCreateModal(false);
+            setCreateTaskStoryId("");
+            setCreateTaskProjectId("");
+          }}
+          onTaskSaved={(savedTask) => {
+            handleTaskSaved(savedTask);
+            setEpicRefreshTrigger((prev) => prev + 1);
+          }}
         />
       )}
 
@@ -577,7 +616,10 @@ function Tasks() {
           taskToEdit={taskToEdit}
           projects={projects}
           onClose={() => setTaskToEdit(null)}
-          onTaskSaved={handleTaskSaved}
+          onTaskSaved={(savedTask) => {
+            handleTaskSaved(savedTask);
+            setEpicRefreshTrigger((prev) => prev + 1);
+          }}
         />
       )}
 

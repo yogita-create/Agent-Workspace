@@ -3,7 +3,15 @@ import mongoose from "mongoose";
 const pendingActionSchema = new mongoose.Schema({
   actionType: {
     type: String,
-    enum: ["create_task", "update_task_status", "update_task_priority", "update_task_deadline", "update_project_status"],
+    enum: [
+      "create_task",
+      "assign_task",
+      "share_task",
+      "update_task_status",
+      "update_task_priority",
+      "update_task_deadline",
+      "update_project_status",
+    ],
     required: true
   },
   payload: { type: mongoose.Schema.Types.Mixed, required: true },
