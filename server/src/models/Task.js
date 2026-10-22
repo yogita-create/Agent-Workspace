@@ -7,6 +7,13 @@ const taskSchema = new mongoose.Schema(
       ref: "Project",
       required: true,
     },
+    story: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Story",
+      required: false,
+      default: null,
+      index: true,
+    },
     storyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Story",
@@ -88,8 +95,16 @@ const taskSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Auto-generate taskKey if empty before saving
+taskSchema.index({ story: 1 });
+
+// Auto-generate taskKey if empty and sync story/storyId before saving
 taskSchema.pre("save", async function () {
+  if (this.story && !this.storyId) {
+    this.storyId = this.story;
+  } else if (this.storyId && !this.story) {
+    this.story = this.storyId;
+  }
+
   if (!this.taskKey) {
     const count = await mongoose.model("Task").countDocuments();
     this.taskKey = `TSK-${100 + count + 1}`;

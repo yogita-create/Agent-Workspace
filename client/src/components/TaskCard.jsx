@@ -9,6 +9,7 @@ import {
   Edit3,
   Folder,
   Sparkles,
+  Bookmark,
 } from "lucide-react";
 import "./TaskCard.css";
 
@@ -91,13 +92,27 @@ function TaskCard({
         </div>
       </div>
 
-      {/* PROJECT PILL */}
-      {showProject && task.projectId && (
-        <div className="task-project-pill">
-          <Folder size={11} />
-          <span>{task.projectId.name || "Project"}</span>
+      {/* PROJECT & STORY PILLS */}
+      {(showProject && task.projectId) || task.story ? (
+        <div className="task-card-context-row">
+          {showProject && task.projectId && (
+            <div className="task-project-pill">
+              <Folder size={11} />
+              <span>{task.projectId.name || "Project"}</span>
+            </div>
+          )}
+
+          {task.story && (
+            <div
+              className="task-story-pill"
+              title={`User Story: ${task.story.title || task.story}`}
+            >
+              <Bookmark size={10} />
+              <span>{task.story.title || "Story"}</span>
+            </div>
+          )}
         </div>
-      )}
+      ) : null}
 
       {/* TITLE & DESCRIPTION */}
       <h3 className="task-card-title">{task.title}</h3>

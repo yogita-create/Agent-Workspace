@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import axiosInstance from "../api/axiosInstance";
 import "./TaskModal.css";
 
 function TaskModal({
   taskToEdit = null,
   defaultProjectId = "",
+  defaultStoryId = "",
   projects = [],
   onClose,
   onTaskSaved,
@@ -17,6 +18,16 @@ function TaskModal({
       defaultProjectId ||
       (projects.length > 0 ? projects[0]._id : "")
   );
+  const [storyId, setStoryId] = useState(
+    taskToEdit?.story?._id ||
+      taskToEdit?.story ||
+      taskToEdit?.storyId ||
+      defaultStoryId ||
+      ""
+  );
+  const [availableStories, setAvailableStories] = useState([]);
+  const [loadingStories, setLoadingStories] = useState(false);
+
   const [priority, setPriority] = useState(taskToEdit?.priority || "medium");
   const [status, setStatus] = useState(taskToEdit?.status || "todo");
   const [deadline, setDeadline] = useState(
@@ -56,6 +67,51 @@ function TaskModal({
         .catch(() => {});
     }
   }, [projectId, projects]);
+
+  // Fetch user stories for the selected project
+  useEffect(() => {
+    if (!projectId) {
+      setAvailableStories([]);
+      return;
+    }
+
+    let isMounted = true;
+    setLoadingStories(true);
+
+    axiosInstance
+      .get("/api/stories", { params: { projectId } })
+      .then((res) => {
+        if (!isMounted) return;
+        const data = res.data;
+        const list =
+          data?.stories || data?.data || (Array.isArray(data) ? data : []);
+        setAvailableStories(list);
+      })
+      .catch((err) => {
+        console.error("Load stories error in task modal:", err);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingStories(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId]);
+
+  // Group stories by epic title
+  const storiesByEpic = useMemo(() => {
+    const groups = {};
+    availableStories.forEach((s) => {
+      const epicTitle =
+        s.epicId?.title || s.epic?.title || "Standalone Stories";
+      if (!groups[epicTitle]) {
+        groups[epicTitle] = [];
+      }
+      groups[epicTitle].push(s);
+    });
+    return groups;
+  }, [availableStories]);
 
   const handleMemberSelect = (e) => {
     const email = e.target.value;
@@ -99,6 +155,7 @@ function TaskModal({
         priority,
         status,
         deadline: deadline ? new Date(deadline).toISOString() : null,
+        story: storyId && storyId.trim() ? storyId.trim() : null,
         assignee: {
           name: assigneeName.trim() || "Unassigned",
           email: assigneeEmail.trim(),
@@ -210,6 +267,37 @@ function TaskModal({
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* USER STORY (OPTIONAL) */}
+          <div className="task-form-group">
+            <label>
+              User Story{" "}
+              <span style={{ fontSize: "11px", fontWeight: "normal", color: "#94a3b8" }}>
+                (Optional — link this task to a story)
+              </span>
+            </label>
+            <select
+              value={storyId}
+              onChange={(e) => setStoryId(e.target.value)}
+              disabled={loadingStories}
+            >
+              <option value="">No Story (Standalone Task)</option>
+              {Object.entries(storiesByEpic).map(([epicTitle, storyList]) => (
+                <optgroup key={epicTitle} label={epicTitle}>
+                  {storyList.map((s) => (
+                    <option key={s._id} value={s._id}>
+                      {s.title} ({s.status || "todo"})
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            {loadingStories && (
+              <span style={{ fontSize: "11px", color: "#94a3b8", marginTop: 2 }}>
+                Loading project stories...
+              </span>
+            )}
           </div>
 
           {/* STATUS, PRIORITY & DEADLINE */}

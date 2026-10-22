@@ -85,8 +85,8 @@ router.post("/", async (req, res) => {
     // 5. Get current projects, tasks and team members
     // --------------------------------------
 
-    const projects = await Project.find();
-    const tasks = await Task.find().populate("projectId", "name status");
+    const projects = await Project.find().lean();
+    const tasks = await Task.find().populate("projectId", "name status").lean();
 
     const memberMap = new Map();
     memberMap.set("yogita@example.com", {

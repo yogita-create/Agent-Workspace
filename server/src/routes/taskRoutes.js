@@ -1,6 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import Task from "../models/Task.js";
+import Story from "../models/Story.js";
 import Project from "../models/project.js";
 import Membership from "../models/Membership.js";
 import User from "../models/User.js";
@@ -84,6 +85,7 @@ router.get("/", async (req, res) => {
 
     const tasks = await Task.find(filter)
       .populate("projectId", "name status organizationId members")
+      .populate("story", "title epicId status priority")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -216,10 +218,9 @@ router.get("/collaborators/all", async (req, res) => {
 router.get("/:taskId", async (req, res) => {
   try {
     const { taskId } = req.params;
-    const task = await Task.findById(taskId).populate(
-      "projectId",
-      "name status members organizationId"
-    );
+    const task = await Task.findById(taskId)
+      .populate("projectId", "name status members organizationId")
+      .populate("story", "title epicId status priority");
 
     if (!task) {
       return res.status(404).json({
@@ -291,6 +292,8 @@ router.post("/", async (req, res) => {
       deadline,
       assignee,
       createdBy,
+      story,
+      storyId,
     } = req.body;
 
     if (!projectId) {
@@ -330,6 +333,54 @@ router.post("/", async (req, res) => {
       }
     }
 
+    // Validate optional story link
+    let storyDoc = null;
+    const storyInput = story !== undefined ? story : storyId;
+    if (
+      storyInput !== undefined &&
+      storyInput !== null &&
+      storyInput !== "" &&
+      storyInput !== "none"
+    ) {
+      if (!mongoose.Types.ObjectId.isValid(storyInput)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid story ID",
+        });
+      }
+
+      storyDoc = await Story.findById(storyInput);
+      if (!storyDoc) {
+        return res.status(404).json({
+          success: false,
+          message: "User story not found",
+        });
+      }
+
+      // Validate story belongs to the same project as the task
+      if (storyDoc.projectId.toString() !== projectId.toString()) {
+        return res.status(400).json({
+          success: false,
+          message: "Story must belong to the same project as the task",
+        });
+      }
+
+      // Validate story belongs to the same organization as the task
+      if (project.organizationId) {
+        const storyProject = await Project.findById(storyDoc.projectId);
+        if (
+          storyProject?.organizationId &&
+          storyProject.organizationId.toString() !==
+            project.organizationId.toString()
+        ) {
+          return res.status(400).json({
+            success: false,
+            message: "Story must belong to the same organization as the task",
+          });
+        }
+      }
+    }
+
     // Generate taskKey
     const count = await Task.countDocuments();
     const taskKey = `TSK-${100 + count + 1}`;
@@ -352,14 +403,15 @@ router.post("/", async (req, res) => {
         name: senderUser?.name || "Workspace Member",
         email: senderUser?.email || req.user.email || "",
       },
+      story: storyDoc ? storyDoc._id : null,
+      storyId: storyDoc ? storyDoc._id : null,
       sharedWith: [],
       comments: [],
     });
 
-    const populatedTask = await Task.findById(task._id).populate(
-      "projectId",
-      "name status organizationId members"
-    );
+    const populatedTask = await Task.findById(task._id)
+      .populate("projectId", "name status organizationId members")
+      .populate("story", "title epicId status priority");
 
     res.status(201).json({
       success: true,
@@ -391,6 +443,8 @@ router.put("/:taskId", async (req, res) => {
       deadline,
       assignee,
       projectId,
+      story,
+      storyId,
     } = req.body;
 
     const task = await Task.findById(taskId).populate("projectId");
@@ -434,8 +488,9 @@ router.put("/:taskId", async (req, res) => {
     }
 
     // If changing projectId, verify user is member of target project's organization
+    let targetProject = null;
     if (projectId && projectId.toString() !== task.projectId?._id?.toString()) {
-      const targetProject = await Project.findById(projectId);
+      targetProject = await Project.findById(projectId);
       if (!targetProject) {
         return res.status(404).json({
           success: false,
@@ -468,10 +523,68 @@ router.put("/:taskId", async (req, res) => {
     if (assignee !== undefined) updateData.assignee = assignee;
     if (projectId !== undefined) updateData.projectId = projectId;
 
+    // Handle story link / unlink / change
+    const storyInput = story !== undefined ? story : storyId;
+    if (storyInput !== undefined) {
+      if (storyInput === null || storyInput === "" || storyInput === "none") {
+        updateData.story = null;
+        updateData.storyId = null;
+      } else {
+        if (!mongoose.Types.ObjectId.isValid(storyInput)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid story ID",
+          });
+        }
+
+        const storyDoc = await Story.findById(storyInput);
+        if (!storyDoc) {
+          return res.status(404).json({
+            success: false,
+            message: "User story not found",
+          });
+        }
+
+        // Validate story belongs to the same project as the task
+        const effectiveProjectId =
+          projectId || task.projectId?._id || task.projectId;
+        if (storyDoc.projectId.toString() !== effectiveProjectId.toString()) {
+          return res.status(400).json({
+            success: false,
+            message: "Story must belong to the same project as the task",
+          });
+        }
+
+        // Validate organization match
+        const effectiveProject =
+          targetProject ||
+          (projectId ? await Project.findById(projectId) : task.projectId);
+
+        if (effectiveProject?.organizationId) {
+          const storyProject = await Project.findById(storyDoc.projectId);
+          if (
+            storyProject?.organizationId &&
+            storyProject.organizationId.toString() !==
+              effectiveProject.organizationId.toString()
+          ) {
+            return res.status(400).json({
+              success: false,
+              message: "Story must belong to the same organization as the task",
+            });
+          }
+        }
+
+        updateData.story = storyDoc._id;
+        updateData.storyId = storyDoc._id;
+      }
+    }
+
     const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, {
       new: true,
       runValidators: true,
-    }).populate("projectId", "name status organizationId members");
+    })
+      .populate("projectId", "name status organizationId members")
+      .populate("story", "title epicId status priority");
 
     res.status(200).json({
       success: true,

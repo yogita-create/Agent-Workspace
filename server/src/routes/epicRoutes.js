@@ -1,6 +1,8 @@
 import express from "express";
 import mongoose from "mongoose";
 import Epic from "../models/Epic.js";
+import Story from "../models/Story.js";
+import Task from "../models/Task.js";
 import Project from "../models/project.js";
 import Membership from "../models/Membership.js";
 import { verifyToken } from "../middleware/verifyToken.js";
@@ -126,11 +128,84 @@ router.get("/", async (req, res) => {
     const epics = await Epic.find(filter)
       .populate("projectId", "name status organizationId")
       .populate("createdBy", "name email")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const epicIds = epics.map((e) => e._id);
+
+    // Fetch all stories for these epics
+    const allStories = await Story.find({
+      $or: [{ epicId: { $in: epicIds } }, { epic: { $in: epicIds } }],
+    }).select("_id epicId epic");
+
+    const allStoryIds = allStories.map((s) => s._id);
+
+    // Aggregate tasks to find which stories are done (has >=1 task and all tasks are done)
+    const taskStats = await Task.aggregate([
+      {
+        $match: {
+          $or: [
+            { story: { $in: allStoryIds } },
+            { storyId: { $in: allStoryIds } },
+          ],
+        },
+      },
+      {
+        $project: {
+          storyKey: { $ifNull: ["$story", "$storyId"] },
+          isDone: {
+            $cond: [
+              { $in: ["$status", ["done", "Done", "completed", "Completed"]] },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$storyKey",
+          taskCount: { $sum: 1 },
+          doneCount: { $sum: "$isDone" },
+        },
+      },
+    ]);
+
+    const doneStorySet = new Set();
+    taskStats.forEach((st) => {
+      // A story is done when it has at least 1 task and all its tasks are Done
+      if (st.taskCount > 0 && st.taskCount === st.doneCount) {
+        doneStorySet.add(st._id.toString());
+      }
+    });
+
+    // Map counts to epics
+    const epicStoryMap = new Map();
+    allStories.forEach((st) => {
+      const eId = (st.epicId || st.epic)?.toString();
+      if (!eId) return;
+      if (!epicStoryMap.has(eId)) {
+        epicStoryMap.set(eId, { total: 0, done: 0 });
+      }
+      const data = epicStoryMap.get(eId);
+      data.total += 1;
+      if (doneStorySet.has(st._id.toString())) {
+        data.done += 1;
+      }
+    });
+
+    const enrichedEpics = epics.map((e) => {
+      const data = epicStoryMap.get(e._id.toString()) || { total: 0, done: 0 };
+      return {
+        ...e,
+        totalStories: data.total,
+        doneStories: data.done,
+      };
+    });
 
     res.status(200).json({
       success: true,
-      epics,
+      epics: enrichedEpics,
     });
   } catch (error) {
     console.error("Get epics error:", error);
@@ -174,9 +249,55 @@ router.get("/:id", async (req, res) => {
       }
     }
 
+    const stories = await Story.find({
+      $or: [{ epicId: epic._id }, { epic: epic._id }],
+    }).select("_id");
+    const storyIds = stories.map((s) => s._id);
+
+    const taskStats = await Task.aggregate([
+      {
+        $match: {
+          $or: [
+            { story: { $in: storyIds } },
+            { storyId: { $in: storyIds } },
+          ],
+        },
+      },
+      {
+        $project: {
+          storyKey: { $ifNull: ["$story", "$storyId"] },
+          isDone: {
+            $cond: [
+              { $in: ["$status", ["done", "Done", "completed", "Completed"]] },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$storyKey",
+          taskCount: { $sum: 1 },
+          doneCount: { $sum: "$isDone" },
+        },
+      },
+    ]);
+
+    let doneStories = 0;
+    taskStats.forEach((st) => {
+      if (st.taskCount > 0 && st.taskCount === st.doneCount) {
+        doneStories += 1;
+      }
+    });
+
+    const epicObj = epic.toObject ? epic.toObject() : { ...epic };
+    epicObj.totalStories = stories.length;
+    epicObj.doneStories = doneStories;
+
     res.status(200).json({
       success: true,
-      epic,
+      epic: epicObj,
     });
   } catch (error) {
     console.error("Get single epic error:", error);

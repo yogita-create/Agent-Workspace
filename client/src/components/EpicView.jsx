@@ -19,6 +19,7 @@ function EpicView({
   projects = [],
   refreshTrigger = 0,
   onOpenCreateEpic,
+  onOpenCreateTask,
 }) {
   const [epics, setEpics] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +31,13 @@ function EpicView({
   const [storiesByEpic, setStoriesByEpic] = useState({});
   // Loading state per epic's stories
   const [loadingStories, setLoadingStories] = useState({});
+
+  // Expand state per story: { [storyId]: boolean }
+  const [expandedStories, setExpandedStories] = useState({});
+  // Tasks mapped by storyId: { [storyId]: Task[] }
+  const [storyTasks, setStoryTasks] = useState({});
+  // Loading state per story's tasks
+  const [loadingStoryTasks, setLoadingStoryTasks] = useState({});
 
   // Inline story creation form state
   const [addingStoryForEpic, setAddingStoryForEpic] = useState(null); // epicId or null
@@ -62,6 +70,26 @@ function EpicView({
     }
   }, []);
 
+  // Fetch tasks for a specific story
+  const fetchTasksForStory = useCallback(async (storyId) => {
+    if (!storyId) return;
+    try {
+      setLoadingStoryTasks((prev) => ({ ...prev, [storyId]: true }));
+      const res = await axiosInstance.get(`/api/stories/${storyId}/tasks`);
+      const data = res.data;
+      const list =
+        data?.tasks || data?.data || (Array.isArray(data) ? data : []);
+      setStoryTasks((prev) => ({
+        ...prev,
+        [storyId]: list,
+      }));
+    } catch (err) {
+      console.error(`Error fetching tasks for story ${storyId}:`, err);
+    } finally {
+      setLoadingStoryTasks((prev) => ({ ...prev, [storyId]: false }));
+    }
+  }, []);
+
   // Fetch epics for selected projectId
   const fetchEpics = useCallback(async () => {
     try {
@@ -79,7 +107,7 @@ function EpicView({
         data?.epics || data?.data || (Array.isArray(data) ? data : []);
       setEpics(list);
 
-      // Preload stories for accurate "X of Y stories done" summaries
+      // Preload stories for accurate sub-lists
       list.forEach((epic) => {
         fetchStoriesForEpic(epic._id);
       });
@@ -98,6 +126,15 @@ function EpicView({
     fetchEpics();
   }, [fetchEpics, refreshTrigger]);
 
+  // Refetch open stories' tasks when refreshTrigger updates
+  useEffect(() => {
+    Object.keys(expandedStories).forEach((sId) => {
+      if (expandedStories[sId]) {
+        fetchTasksForStory(sId);
+      }
+    });
+  }, [refreshTrigger, expandedStories, fetchTasksForStory]);
+
   // Toggle expanding an epic
   const toggleEpic = (epicId) => {
     setExpandedEpics((prev) => {
@@ -106,6 +143,17 @@ function EpicView({
         fetchStoriesForEpic(epicId);
       }
       return { ...prev, [epicId]: willExpand };
+    });
+  };
+
+  // Toggle expanding a story
+  const toggleStory = (storyId) => {
+    setExpandedStories((prev) => {
+      const willExpand = !prev[storyId];
+      if (willExpand && !storyTasks[storyId]) {
+        fetchTasksForStory(storyId);
+      }
+      return { ...prev, [storyId]: willExpand };
     });
   };
 
@@ -234,10 +282,20 @@ function EpicView({
           const isExpanded = !!expandedEpics[epic._id];
           const stories = storiesByEpic[epic._id] || epic.stories || [];
           const isLoadingThisStories = !!loadingStories[epic._id];
-          const totalStories = stories.length;
-          const doneStories = stories.filter(
-            (s) => s.status === "done" || s.status === "completed"
-          ).length;
+
+          // Use computed server progress values if available; fall back to loaded stories
+          const totalStories =
+            epic.totalStories !== undefined ? epic.totalStories : stories.length;
+          const doneStories =
+            epic.doneStories !== undefined
+              ? epic.doneStories
+              : stories.filter(
+                  (s) =>
+                    (s.taskCount > 0 && s.doneCount === s.taskCount) ||
+                    s.status === "done" ||
+                    s.status === "completed"
+                ).length;
+
           const statusInfo = formatStatus(epic.status);
           const epicColor = epic.color || "#6366f1";
 
@@ -295,7 +353,7 @@ function EpicView({
                     {statusInfo.label}
                   </span>
 
-                  {/* Summary: X of Y stories done */}
+                  {/* Summary: X of Y stories done (Using server progress values) */}
                   <div
                     className="epic-progress-summary"
                     title={`${doneStories} of ${totalStories} stories completed`}
@@ -447,80 +505,227 @@ function EpicView({
                         const sPriority = story.priority || "medium";
                         const assigneeName =
                           story.assignee?.name || story.assignee || "Unassigned";
+
                         const taskCount =
-                          story.taskCount ??
-                          (Array.isArray(story.tasks) ? story.tasks.length : null);
+                          story.taskCount !== undefined && story.taskCount !== null
+                            ? story.taskCount
+                            : (Array.isArray(story.tasks) ? story.tasks.length : 0);
+
+                        const isStoryExpanded = !!expandedStories[story._id];
+                        const tasksForStory = storyTasks[story._id] || [];
+                        const isLoadingTasks = !!loadingStoryTasks[story._id];
 
                         return (
-                          <div key={story._id} className="story-item-card">
-                            <div className="story-item-left">
-                              <Bookmark
-                                size={15}
-                                color={epicColor}
-                                className="story-icon"
-                              />
+                          <div
+                            key={story._id}
+                            className={`story-item-card-wrapper ${
+                              isStoryExpanded ? "story-expanded" : ""
+                            }`}
+                          >
+                            {/* STORY HEADER ROW (Click to toggle expand) */}
+                            <div
+                              className="story-item-card-header"
+                              onClick={() => toggleStory(story._id)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  toggleStory(story._id);
+                                }
+                              }}
+                            >
+                              <div className="story-item-left">
+                                <button
+                                  type="button"
+                                  className="story-expand-btn"
+                                  tabIndex={-1}
+                                  aria-label={
+                                    isStoryExpanded
+                                      ? "Collapse story tasks"
+                                      : "Expand story tasks"
+                                  }
+                                >
+                                  {isStoryExpanded ? (
+                                    <ChevronDown size={15} />
+                                  ) : (
+                                    <ChevronRight size={15} />
+                                  )}
+                                </button>
 
-                              <div className="story-info">
-                                <span className="story-title">
-                                  {story.title || story.name}
-                                </span>
-                                {story.description && (
-                                  <span className="story-desc">
-                                    {story.description}
+                                <Bookmark
+                                  size={15}
+                                  color={epicColor}
+                                  className="story-icon"
+                                />
+
+                                <div className="story-info">
+                                  <span className="story-title">
+                                    {story.title || story.name}
                                   </span>
-                                )}
+                                  {story.description && (
+                                    <span className="story-desc">
+                                      {story.description}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="story-item-right">
-                              {/* Points */}
-                              {story.storyPoints !== undefined &&
-                                story.storyPoints !== null && (
-                                  <span
-                                    className="story-points-pill"
-                                    title="Story points"
-                                  >
-                                    {story.storyPoints} pts
-                                  </span>
-                                )}
-
-                              {/* Priority Badge */}
-                              <span
-                                className={`priority-badge priority-${sPriority}`}
-                              >
-                                {sPriority}
-                              </span>
-
-                              {/* Status Badge */}
-                              <span
-                                className={`epic-status-badge ${sStatus.className}`}
-                              >
-                                {sStatus.label}
-                              </span>
-
-                              {/* Assignee */}
                               <div
-                                className="story-assignee"
-                                title={`Assignee: ${assigneeName}`}
+                                className="story-item-right"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                <span className="story-avatar">
-                                  {assigneeName.charAt(0).toUpperCase()}
-                                </span>
-                                <span className="story-assignee-name">
-                                  {assigneeName}
-                                </span>
-                              </div>
+                                {/* Points */}
+                                {story.storyPoints !== undefined &&
+                                  story.storyPoints !== null && (
+                                    <span
+                                      className="story-points-pill"
+                                      title="Story points"
+                                    >
+                                      {story.storyPoints} pts
+                                    </span>
+                                  )}
 
-                              {/* Linked Tasks count if available */}
-                              {taskCount !== null && (
+                                {/* Priority Badge */}
+                                <span
+                                  className={`priority-badge priority-${sPriority}`}
+                                >
+                                  {sPriority}
+                                </span>
+
+                                {/* Status Badge */}
+                                <span
+                                  className={`epic-status-badge ${sStatus.className}`}
+                                >
+                                  {sStatus.label}
+                                </span>
+
+                                {/* Assignee */}
+                                <div
+                                  className="story-assignee"
+                                  title={`Assignee: ${assigneeName}`}
+                                >
+                                  <span className="story-avatar">
+                                    {assigneeName.charAt(0).toUpperCase()}
+                                  </span>
+                                  <span className="story-assignee-name">
+                                    {assigneeName}
+                                  </span>
+                                </div>
+
+                                {/* Real Task count pill */}
                                 <span
                                   className="story-tasks-pill"
-                                  title="Linked tasks"
+                                  title="Linked tasks count"
+                                  onClick={() => toggleStory(story._id)}
+                                  style={{ cursor: "pointer" }}
                                 >
                                   {taskCount} task{taskCount === 1 ? "" : "s"}
                                 </span>
-                              )}
+                              </div>
                             </div>
+
+                            {/* EXPANDED TASKS DRAWER */}
+                            {isStoryExpanded && (
+                              <div className="story-tasks-drawer">
+                                <div className="story-tasks-drawer-header">
+                                  <span className="story-tasks-drawer-title">
+                                    Tasks in this Story ({tasksForStory.length})
+                                  </span>
+
+                                  {/* Add Task Button inside story */}
+                                  {onOpenCreateTask && (
+                                    <button
+                                      type="button"
+                                      className="story-add-task-btn"
+                                      onClick={() =>
+                                        onOpenCreateTask({
+                                          storyId: story._id,
+                                          projectId:
+                                            story.projectId?._id ||
+                                            story.projectId ||
+                                            epic.projectId?._id ||
+                                            epic.projectId,
+                                        })
+                                      }
+                                      title="Add Task to this User Story"
+                                    >
+                                      <Plus size={13} />
+                                      <span>Add Task</span>
+                                    </button>
+                                  )}
+                                </div>
+
+                                {isLoadingTasks && tasksForStory.length === 0 ? (
+                                  <div className="story-task-empty">
+                                    Loading story tasks...
+                                  </div>
+                                ) : tasksForStory.length === 0 ? (
+                                  <div className="story-task-empty">
+                                    No tasks linked to this story yet. Click &quot;+ Add Task&quot; above to create one.
+                                  </div>
+                                ) : (
+                                  <div className="story-tasks-list">
+                                    {tasksForStory.map((t) => {
+                                      const tStatus = formatStatus(t.status);
+                                      const tPriority = t.priority || "medium";
+                                      const tAssignee =
+                                        t.assignee?.name || "Unassigned";
+
+                                      return (
+                                        <div
+                                          key={t._id}
+                                          className="story-task-item"
+                                        >
+                                          <div className="story-task-left">
+                                            <span className="story-task-key">
+                                              {t.taskKey || `TSK-${t._id.slice(-4)}`}
+                                            </span>
+                                            <span className="story-task-title">
+                                              {t.title}
+                                            </span>
+                                          </div>
+
+                                          <div className="story-task-right">
+                                            <span
+                                              className={`priority-badge priority-${tPriority}`}
+                                            >
+                                              {tPriority}
+                                            </span>
+
+                                            <span
+                                              className={`epic-status-badge ${tStatus.className}`}
+                                              style={{ fontSize: 11, padding: "2px 8px" }}
+                                            >
+                                              {tStatus.label}
+                                            </span>
+
+                                            <div
+                                              className="story-assignee"
+                                              title={`Assignee: ${tAssignee}`}
+                                              style={{ gap: 4 }}
+                                            >
+                                              <span
+                                                className="story-avatar"
+                                                style={{ width: 18, height: 18, fontSize: 9 }}
+                                              >
+                                                {tAssignee.charAt(0).toUpperCase()}
+                                              </span>
+                                              <span
+                                                className="story-assignee-name"
+                                                style={{ fontSize: 11.5 }}
+                                              >
+                                                {tAssignee}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
