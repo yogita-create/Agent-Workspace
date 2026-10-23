@@ -95,7 +95,6 @@ const taskSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-taskSchema.index({ story: 1 });
 
 // Auto-generate taskKey if empty and sync story/storyId before saving
 taskSchema.pre("save", async function () {
