@@ -712,3 +712,104 @@
   font-style: italic;
   padding: 6px 0;
 }
+
+/* ==========================================
+   DATE DISPLAY, OVERDUE BADGES & EDIT BUTTONS
+========================================== */
+
+.epic-deadline-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted, #64748b);
+  padding: 3px 9px;
+  background: var(--bg-tertiary, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.epic-deadline-info.overdue-text {
+  color: #ef4444;
+  border-color: #fecaca;
+  background: #fef2f2;
+  font-weight: 600;
+}
+
+.story-deadline-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-muted, #64748b);
+  padding: 2px 7px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.story-deadline-info.overdue-text {
+  color: #ef4444;
+  border-color: #fecaca;
+  background: #fef2f2;
+  font-weight: 600;
+}
+
+.overdue-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: #ef4444;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin-left: 2px;
+}
+
+.epic-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  background: var(--bg-card, #ffffff);
+  color: var(--text-secondary, #475569);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.epic-edit-btn:hover {
+  background: #f1f5f9;
+  color: var(--text-primary, #0f172a);
+  border-color: #94a3b8;
+}
+
+.story-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: #94a3b8;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.story-edit-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+

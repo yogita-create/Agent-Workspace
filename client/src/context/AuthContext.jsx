@@ -115,6 +115,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     user,
+    setUser,
     accessToken,
     loading,
     isAuthenticated: Boolean(accessToken && user),

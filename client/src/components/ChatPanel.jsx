@@ -19,6 +19,7 @@ import {
 import "./ChatPanel.css";
 import ActionCard from "./ActionCard";
 import axiosInstance from "../api/axiosInstance";
+import { useAuth } from "../context/AuthContext";
 
 const welcomeMessage = {
   role: "assistant",
@@ -27,6 +28,9 @@ const welcomeMessage = {
 };
 
 function ChatPanel({ sessionId: propSessionId }) {
+  const { user } = useAuth();
+  const showPromptChips = user?.preferences?.promptChips ?? true;
+
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(propSessionId || null);
 
@@ -655,43 +659,45 @@ function ChatPanel({ sessionId: propSessionId }) {
         </div>
 
         {/* QUICK SUGGESTIONS */}
-        <div className="chat-suggestions">
-          <button
-            type="button"
-            className="suggestion-chip"
-            onClick={() => handleSendPrompt("What tasks are high priority or urgent?")}
-          >
-            🔥 High priority tasks
-          </button>
-          <button
-            type="button"
-            className="suggestion-chip"
-            onClick={() => handleSendPrompt("Which tasks are assigned to Yogita?")}
-          >
-            👤 Assigned to Yogita
-          </button>
-          <button
-            type="button"
-            className="suggestion-chip"
-            onClick={() => handleSendPrompt("Which tasks are overdue?")}
-          >
-            ⚠️ Overdue tasks
-          </button>
-          <button
-            type="button"
-            className="suggestion-chip"
-            onClick={() => handleSendPrompt("Summarize all projects and current progress.")}
-          >
-            📊 Workspace summary
-          </button>
-          <button
-            type="button"
-            className="suggestion-chip"
-            onClick={() => handleSendPrompt("How do I share a task with another collaborator?")}
-          >
-            🤝 How to share a task
-          </button>
-        </div>
+        {showPromptChips && (
+          <div className="chat-suggestions">
+            <button
+              type="button"
+              className="suggestion-chip"
+              onClick={() => handleSendPrompt("What tasks are high priority or urgent?")}
+            >
+              🔥 High priority tasks
+            </button>
+            <button
+              type="button"
+              className="suggestion-chip"
+              onClick={() => handleSendPrompt("Which tasks are assigned to Yogita?")}
+            >
+              👤 Assigned to Yogita
+            </button>
+            <button
+              type="button"
+              className="suggestion-chip"
+              onClick={() => handleSendPrompt("Which tasks are overdue?")}
+            >
+              ⚠️ Overdue tasks
+            </button>
+            <button
+              type="button"
+              className="suggestion-chip"
+              onClick={() => handleSendPrompt("Summarize all projects and current progress.")}
+            >
+              📊 Workspace summary
+            </button>
+            <button
+              type="button"
+              className="suggestion-chip"
+              onClick={() => handleSendPrompt("How do I share a task with another collaborator?")}
+            >
+              🤝 How to share a task
+            </button>
+          </div>
+        )}
 
         {/* INPUT CONTAINER */}
         <div className="chat-input-container">

@@ -68,6 +68,10 @@ const storySchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    dueDate: {
+      type: Date,
+      default: null,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -75,8 +79,16 @@ const storySchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
+
+storySchema.virtual("isOverdue").get(function () {
+  if (!this.dueDate) return false;
+  const isDone = ["done", "Done", "completed", "Completed"].includes(this.status);
+  return new Date(this.dueDate) < new Date() && !isDone;
+});
 
 storySchema.pre("save", function () {
   if (this.epic && !this.epicId) {

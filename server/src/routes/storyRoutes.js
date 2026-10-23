@@ -9,6 +9,12 @@ import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
+const checkStoryOverdue = (dueDate, status) => {
+  if (!dueDate) return false;
+  const isDone = ["done", "Done", "completed", "Completed"].includes(status);
+  return new Date(dueDate) < new Date() && !isDone;
+};
+
 // Apply verifyToken middleware to all story routes
 router.use(verifyToken);
 
@@ -28,6 +34,7 @@ router.post("/", async (req, res) => {
       storyPoints,
       assignee,
       status,
+      dueDate,
     } = req.body;
 
     if (!title || !title.trim()) {
@@ -85,6 +92,25 @@ router.post("/", async (req, res) => {
       }
     }
 
+    let parsedDueDate = null;
+    if (dueDate) {
+      const d = new Date(dueDate);
+      if (isNaN(d.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid due date format",
+        });
+      }
+      parsedDueDate = d;
+    }
+
+    if (parsedDueDate && epic.dueDate && parsedDueDate > new Date(epic.dueDate)) {
+      return res.status(400).json({
+        success: false,
+        message: `Story due date cannot be after epic due date (${new Date(epic.dueDate).toLocaleDateString()})`,
+      });
+    }
+
     const story = await Story.create({
       title: title.trim(),
       description: description ? description.trim() : "",
@@ -98,6 +124,7 @@ router.post("/", async (req, res) => {
         storyPoints !== undefined && storyPoints !== null && storyPoints !== ""
           ? Number(storyPoints)
           : null,
+      dueDate: parsedDueDate,
       createdBy: req.user.id,
     });
 
@@ -106,10 +133,13 @@ router.post("/", async (req, res) => {
       .populate("projectId", "name status organizationId")
       .populate("createdBy", "name email");
 
+    const storyObj = populatedStory.toObject ? populatedStory.toObject() : { ...populatedStory };
+    storyObj.isOverdue = checkStoryOverdue(storyObj.dueDate, storyObj.status);
+
     res.status(201).json({
       success: true,
       message: "Story created successfully",
-      story: populatedStory,
+      story: storyObj,
     });
   } catch (error) {
     console.error("Create story error:", error);
@@ -225,6 +255,7 @@ router.get("/", async (req, res) => {
         ...s,
         taskCount: stat.taskCount,
         doneCount: stat.doneCount,
+        isOverdue: checkStoryOverdue(s.dueDate, s.status),
       };
     });
 
@@ -283,9 +314,10 @@ router.get("/:id", async (req, res) => {
       status: { $in: ["done", "Done", "completed", "Completed"] },
     });
 
-    const storyObj = story.toObject();
+    const storyObj = story.toObject ? story.toObject() : { ...story };
     storyObj.taskCount = taskCount;
     storyObj.doneCount = doneCount;
+    storyObj.isOverdue = checkStoryOverdue(storyObj.dueDate, storyObj.status);
 
     res.status(200).json({
       success: true,
@@ -403,6 +435,7 @@ router.put("/:id", async (req, res) => {
       assignee,
       storyPoints,
       epicId,
+      dueDate,
     } = req.body;
 
     const hasPrivilegedFieldUpdates =
@@ -420,10 +453,45 @@ router.put("/:id", async (req, res) => {
       });
     }
 
+    let parsedDueDate = undefined;
+    if (dueDate !== undefined) {
+      if (dueDate === null || dueDate === "") {
+        parsedDueDate = null;
+      } else {
+        const d = new Date(dueDate);
+        if (isNaN(d.getTime())) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid due date format",
+          });
+        }
+        parsedDueDate = d;
+      }
+    }
+
+    const effectiveDueDate =
+      parsedDueDate !== undefined
+        ? parsedDueDate
+        : story.dueDate
+        ? new Date(story.dueDate)
+        : null;
+
+    const targetEpicId = epicId !== undefined ? epicId : (story.epicId || story.epic);
+    if (effectiveDueDate && targetEpicId) {
+      const targetEpic = await Epic.findById(targetEpicId);
+      if (targetEpic && targetEpic.dueDate && effectiveDueDate > new Date(targetEpic.dueDate)) {
+        return res.status(400).json({
+          success: false,
+          message: `Story due date cannot be after epic due date (${new Date(targetEpic.dueDate).toLocaleDateString()})`,
+        });
+      }
+    }
+
     const updateData = {};
     if (status !== undefined) updateData.status = status;
     if (description !== undefined) updateData.description = description.trim();
     if (assignee !== undefined) updateData.assignee = assignee;
+    if (dueDate !== undefined) updateData.dueDate = parsedDueDate;
 
     if (isPrivileged) {
       if (title !== undefined) {
@@ -452,10 +520,13 @@ router.put("/:id", async (req, res) => {
       .populate("projectId", "name status organizationId")
       .populate("createdBy", "name email");
 
+    const storyObj = updatedStory.toObject ? updatedStory.toObject() : { ...updatedStory };
+    storyObj.isOverdue = checkStoryOverdue(storyObj.dueDate, storyObj.status);
+
     res.status(200).json({
       success: true,
       message: "Story updated successfully",
-      story: updatedStory,
+      story: storyObj,
     });
   } catch (error) {
     console.error("Update story error:", error);

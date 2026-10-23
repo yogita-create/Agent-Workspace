@@ -9,6 +9,12 @@ import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
+const checkEpicOverdue = (dueDate, status) => {
+  if (!dueDate) return false;
+  const isDone = ["done", "Done", "completed", "Completed"].includes(status);
+  return new Date(dueDate) < new Date() && !isDone;
+};
+
 // Apply verifyToken middleware to all epic routes
 router.use(verifyToken);
 
@@ -18,7 +24,7 @@ router.use(verifyToken);
 // ==========================================
 router.post("/", async (req, res) => {
   try {
-    const { title, description, projectId, status, color } = req.body;
+    const { title, description, projectId, status, color, startDate, dueDate } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({
@@ -58,12 +64,38 @@ router.post("/", async (req, res) => {
       }
     }
 
+    const parsedStartDate = startDate ? new Date(startDate) : null;
+    const parsedDueDate = dueDate ? new Date(dueDate) : null;
+
+    if (startDate && isNaN(parsedStartDate?.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid start date format",
+      });
+    }
+
+    if (dueDate && isNaN(parsedDueDate?.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid due date format",
+      });
+    }
+
+    if (parsedStartDate && parsedDueDate && parsedDueDate < parsedStartDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Epic due date cannot be before start date",
+      });
+    }
+
     const epic = await Epic.create({
       title: title.trim(),
       description: description ? description.trim() : "",
       projectId,
       status: status || "todo",
       color: color || "#6366f1",
+      startDate: parsedStartDate,
+      dueDate: parsedDueDate,
       createdBy: req.user.id,
     });
 
@@ -71,10 +103,13 @@ router.post("/", async (req, res) => {
       .populate("projectId", "name status organizationId")
       .populate("createdBy", "name email");
 
+    const epicObj = populatedEpic.toObject ? populatedEpic.toObject() : { ...populatedEpic };
+    epicObj.isOverdue = checkEpicOverdue(epicObj.dueDate, epicObj.status);
+
     res.status(201).json({
       success: true,
       message: "Epic created successfully",
-      epic: populatedEpic,
+      epic: epicObj,
     });
   } catch (error) {
     console.error("Create epic error:", error);
@@ -200,6 +235,7 @@ router.get("/", async (req, res) => {
         ...e,
         totalStories: data.total,
         doneStories: data.done,
+        isOverdue: checkEpicOverdue(e.dueDate, e.status),
       };
     });
 
@@ -294,6 +330,7 @@ router.get("/:id", async (req, res) => {
     const epicObj = epic.toObject ? epic.toObject() : { ...epic };
     epicObj.totalStories = stories.length;
     epicObj.doneStories = doneStories;
+    epicObj.isOverdue = checkEpicOverdue(epicObj.dueDate, epicObj.status);
 
     res.status(200).json({
       success: true,
@@ -316,7 +353,7 @@ router.get("/:id", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, status, color, projectId } = req.body;
+    const { title, description, status, color, projectId, startDate, dueDate } = req.body;
 
     const epic = await Epic.findById(id).populate("projectId");
     if (!epic) {
@@ -348,6 +385,76 @@ router.put("/:id", async (req, res) => {
       }
     }
 
+    let parsedStartDate = undefined;
+    if (startDate !== undefined) {
+      if (startDate === null || startDate === "") {
+        parsedStartDate = null;
+      } else {
+        const d = new Date(startDate);
+        if (isNaN(d.getTime())) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid start date format",
+          });
+        }
+        parsedStartDate = d;
+      }
+    }
+
+    let parsedDueDate = undefined;
+    if (dueDate !== undefined) {
+      if (dueDate === null || dueDate === "") {
+        parsedDueDate = null;
+      } else {
+        const d = new Date(dueDate);
+        if (isNaN(d.getTime())) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid due date format",
+          });
+        }
+        parsedDueDate = d;
+      }
+    }
+
+    const effectiveStartDate =
+      parsedStartDate !== undefined
+        ? parsedStartDate
+        : epic.startDate
+        ? new Date(epic.startDate)
+        : null;
+
+    const effectiveDueDate =
+      parsedDueDate !== undefined
+        ? parsedDueDate
+        : epic.dueDate
+        ? new Date(epic.dueDate)
+        : null;
+
+    if (effectiveStartDate && effectiveDueDate && effectiveDueDate < effectiveStartDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Epic due date cannot be before start date",
+      });
+    }
+
+    // Epic dueDate must not be moved earlier than the latest dueDate of its stories
+    if (dueDate !== undefined && effectiveDueDate) {
+      const storiesWithDueDates = await Story.find({
+        $or: [{ epicId: epic._id }, { epic: epic._id }],
+        dueDate: { $ne: null },
+      }).select("dueDate title");
+
+      for (const story of storiesWithDueDates) {
+        if (story.dueDate && new Date(story.dueDate) > effectiveDueDate) {
+          return res.status(400).json({
+            success: false,
+            message: `Epic due date cannot be earlier than story "${story.title}" due date (${new Date(story.dueDate).toLocaleDateString()})`,
+          });
+        }
+      }
+    }
+
     const updateData = {};
     if (title !== undefined) {
       if (!title.trim()) {
@@ -362,6 +469,8 @@ router.put("/:id", async (req, res) => {
     if (status !== undefined) updateData.status = status;
     if (color !== undefined) updateData.color = color;
     if (projectId !== undefined) updateData.projectId = projectId;
+    if (startDate !== undefined) updateData.startDate = parsedStartDate;
+    if (dueDate !== undefined) updateData.dueDate = parsedDueDate;
 
     const updatedEpic = await Epic.findByIdAndUpdate(id, updateData, {
       new: true,
@@ -370,10 +479,13 @@ router.put("/:id", async (req, res) => {
       .populate("projectId", "name status organizationId")
       .populate("createdBy", "name email");
 
+    const epicObj = updatedEpic.toObject ? updatedEpic.toObject() : { ...updatedEpic };
+    epicObj.isOverdue = checkEpicOverdue(epicObj.dueDate, epicObj.status);
+
     res.status(200).json({
       success: true,
       message: "Epic updated successfully",
-      epic: updatedEpic,
+      epic: epicObj,
     });
   } catch (error) {
     console.error("Update epic error:", error);

@@ -39,6 +39,7 @@ function Tasks() {
   const [createTaskStoryId, setCreateTaskStoryId] = useState("");
   const [createTaskProjectId, setCreateTaskProjectId] = useState("");
   const [showCreateEpicModal, setShowCreateEpicModal] = useState(false);
+  const [epicToEdit, setEpicToEdit] = useState(null);
   const [epicRefreshTrigger, setEpicRefreshTrigger] = useState(0);
   const [taskToEdit, setTaskToEdit] = useState(null);
   const [taskToShare, setTaskToShare] = useState(null);
@@ -414,7 +415,14 @@ function Tasks() {
           projectId={selectedProjectId}
           projects={projects}
           refreshTrigger={epicRefreshTrigger}
-          onOpenCreateEpic={() => setShowCreateEpicModal(true)}
+          onOpenCreateEpic={() => {
+            setEpicToEdit(null);
+            setShowCreateEpicModal(true);
+          }}
+          onOpenEditEpic={(epic) => {
+            setEpicToEdit(epic);
+            setShowCreateEpicModal(true);
+          }}
           onOpenCreateTask={handleOpenCreateTaskFromStory}
         />
       ) : viewMode === "board" ? (
@@ -597,15 +605,25 @@ function Tasks() {
         />
       )}
 
-      {/* CREATE EPIC MODAL */}
+      {/* CREATE / EDIT EPIC MODAL */}
       {showCreateEpicModal && (
         <CreateEpicModal
+          epicToEdit={epicToEdit}
           projects={projects}
           defaultProjectId={selectedProjectId !== "all" ? selectedProjectId : ""}
-          onClose={() => setShowCreateEpicModal(false)}
+          onClose={() => {
+            setShowCreateEpicModal(false);
+            setEpicToEdit(null);
+          }}
           onEpicCreated={() => {
             setEpicRefreshTrigger((prev) => prev + 1);
             setShowCreateEpicModal(false);
+            setEpicToEdit(null);
+          }}
+          onEpicSaved={() => {
+            setEpicRefreshTrigger((prev) => prev + 1);
+            setShowCreateEpicModal(false);
+            setEpicToEdit(null);
           }}
         />
       )}
@@ -635,20 +653,35 @@ function Tasks() {
   );
 }
 
-/* Helper modal for creating an Epic matching TaskModal styling */
+/* Helper modal for creating or editing an Epic matching TaskModal styling */
 function CreateEpicModal({
+  epicToEdit = null,
   projects = [],
   defaultProjectId = "",
   onClose,
   onEpicCreated,
+  onEpicSaved,
 }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(epicToEdit?.title || epicToEdit?.name || "");
+  const [description, setDescription] = useState(epicToEdit?.description || "");
   const [projectId, setProjectId] = useState(
-    defaultProjectId || (projects.length > 0 ? projects[0]._id : "")
+    epicToEdit?.projectId?._id ||
+      epicToEdit?.projectId ||
+      defaultProjectId ||
+      (projects.length > 0 ? projects[0]._id : "")
   );
-  const [status, setStatus] = useState("todo");
-  const [color, setColor] = useState("#6366f1");
+  const [status, setStatus] = useState(epicToEdit?.status || "todo");
+  const [color, setColor] = useState(epicToEdit?.color || "#6366f1");
+  const [startDate, setStartDate] = useState(
+    epicToEdit?.startDate
+      ? new Date(epicToEdit.startDate).toISOString().split("T")[0]
+      : ""
+  );
+  const [dueDate, setDueDate] = useState(
+    epicToEdit?.dueDate
+      ? new Date(epicToEdit.dueDate).toISOString().split("T")[0]
+      : ""
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -684,22 +717,29 @@ function CreateEpicModal({
         projectId,
         status,
         color,
+        startDate: startDate ? new Date(startDate).toISOString() : null,
+        dueDate: dueDate ? new Date(dueDate).toISOString() : null,
       };
 
-      const res = await axiosInstance.post("/api/epics", payload);
+      const res = epicToEdit
+        ? await axiosInstance.put(`/api/epics/${epicToEdit._id}`, payload)
+        : await axiosInstance.post("/api/epics", payload);
+
       if (res.data?.success !== false) {
-        if (onEpicCreated) {
+        if (onEpicSaved) {
+          onEpicSaved(res.data?.epic || res.data);
+        } else if (onEpicCreated) {
           onEpicCreated(res.data?.epic || res.data);
         }
       } else {
-        throw new Error(res.data?.message || "Failed to create epic");
+        throw new Error(res.data?.message || "Failed to save epic");
       }
     } catch (err) {
-      console.error("Create epic error:", err);
+      console.error("Save epic error:", err);
       setError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to create epic."
+          "Failed to save epic."
       );
     } finally {
       setLoading(false);
@@ -718,8 +758,12 @@ function CreateEpicModal({
       <div className="task-modal-content">
         <div className="task-modal-header">
           <div>
-            <h2>Create New Epic</h2>
-            <p>Group user stories and track high-level project initiatives</p>
+            <h2>{epicToEdit ? "Edit Epic" : "Create New Epic"}</h2>
+            <p>
+              {epicToEdit
+                ? "Update epic scope, dates, and deliverables"
+                : "Group user stories and track high-level project initiatives"}
+            </p>
           </div>
 
           <button
@@ -825,6 +869,27 @@ function CreateEpicModal({
             />
           </div>
 
+          <div className="task-form-row">
+            <div className="task-form-group">
+              <label>Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+
+            <div className="task-form-group">
+              <label>Due Date</label>
+              <input
+                type="date"
+                value={dueDate}
+                min={startDate || undefined}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
+          </div>
+
           <div className="task-modal-actions">
             <button
               type="button"
@@ -841,7 +906,7 @@ function CreateEpicModal({
               disabled={loading || !title.trim()}
               style={{ background: "#7c3aed" }}
             >
-              {loading ? "Creating..." : "Create Epic"}
+              {loading ? "Saving..." : epicToEdit ? "Save Changes" : "Create Epic"}
             </button>
           </div>
         </form>

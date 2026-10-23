@@ -707,6 +707,25 @@
 .icon-overdue-bg { background: #fef2f2; color: #ef4444; }
 .icon-today-bg { background: #fff7ed; color: #f97316; }
 .icon-tomorrow-bg { background: #eff6ff; color: #3b82f6; }
+.icon-purple-bg { background: #f5f3ff; color: #8b5cf6; }
+
+.notif-dismiss-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.notif-dismiss-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
 
 .notif-item-content {
   display: flex;

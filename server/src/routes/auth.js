@@ -5,8 +5,60 @@ import rateLimit from "express-rate-limit";
 import User from "../models/User.js";
 import Organization from "../models/Organization.js";
 import Membership from "../models/Membership.js";
+import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
+
+// Helper to normalize and validate IANA timezones
+const normalizeTimezone = (tz) => {
+  if (!tz || typeof tz !== "string") return "Asia/Kolkata";
+  const cleaned = tz.replace(/\s*\(.*?\)\s*/g, "").trim();
+  return cleaned || "Asia/Kolkata";
+};
+
+const isValidIanaTimezone = (tz) => {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// Helper to assemble full user payload with admin-assigned role and defaulted preferences
+const getUserWithRoleAndPreferences = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) return null;
+
+  // Find membership to get the admin-assigned organization role
+  const membership = await Membership.findOne({ userId: user._id }).sort({ createdAt: -1 });
+  const role = membership?.role || "employee";
+
+  // Preferences default fallback for existing users without preferences in DB
+  const defaultPreferences = {
+    actionApproval: true,
+    promptChips: true,
+    notifyTaskAssigned: true,
+    notifyDeadlines: true,
+    notifyAiProposals: true,
+  };
+
+  const preferences = {
+    ...defaultPreferences,
+    ...(user.preferences?.toObject ? user.preferences.toObject() : user.preferences || {}),
+  };
+
+  return {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    timezone: normalizeTimezone(user.timezone),
+    preferences,
+    role,
+    dismissedAlerts: user.dismissedAlerts || [],
+    createdAt: user.createdAt,
+  };
+};
 
 // ==========================================
 // RATE LIMITER (FOR LOGIN ROUTE ONLY)
@@ -107,15 +159,12 @@ router.post("/register", async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, COOKIE_OPTIONS);
 
+    const userData = await getUserWithRoleAndPreferences(user._id);
+
     return res.status(201).json({
       success: true,
       accessToken,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt,
-      },
+      user: userData,
     });
   } catch (error) {
     console.error("Registration error:", error);
@@ -166,15 +215,12 @@ router.post("/login", loginLimiter, async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, COOKIE_OPTIONS);
 
+    const userData = await getUserWithRoleAndPreferences(user._id);
+
     return res.json({
       success: true,
       accessToken,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt,
-      },
+      user: userData,
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -220,16 +266,12 @@ router.post("/refresh", async (req, res) => {
         }
 
         const newAccessToken = generateAccessToken(user);
+        const userData = await getUserWithRoleAndPreferences(user._id);
 
         return res.json({
           success: true,
           accessToken: newAccessToken,
-          user: {
-            id: user._id,
-            name: user.name,
-            email: user.email,
-            createdAt: user.createdAt,
-          },
+          user: userData,
         });
       }
     );
@@ -257,5 +299,146 @@ router.post("/logout", (req, res) => {
     message: "Logged out successfully",
   });
 });
+
+// ==========================================
+// GET /api/auth/me
+// Get current user profile, preferences, and admin-assigned role
+// ==========================================
+router.get("/me", verifyToken, async (req, res) => {
+  try {
+    const userData = await getUserWithRoleAndPreferences(req.user.id);
+    if (!userData) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    return res.json({
+      success: true,
+      user: userData,
+    });
+  } catch (error) {
+    console.error("Get current user error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve user profile",
+    });
+  }
+});
+
+// ==========================================
+// PUT & PATCH /api/auth/profile (and /api/auth/me)
+// Update current user's own profile and preferences only
+// Whitelist ONLY: display name, timezone, preferences
+// Never write role, email, organization, password or anything else
+// ==========================================
+const handleUpdateProfile = async (req, res) => {
+  try {
+    const { name, displayName, timezone, preferences } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const newName = name !== undefined ? name : displayName;
+
+    if (newName !== undefined) {
+      if (typeof newName !== "string" || !newName.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Display name is required",
+        });
+      }
+      if (newName.trim().length > 50) {
+        return res.status(400).json({
+          success: false,
+          message: "Display name cannot exceed 50 characters",
+        });
+      }
+      user.name = newName.trim();
+    }
+
+    if (timezone !== undefined) {
+      if (typeof timezone !== "string" || !timezone.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Timezone must be a valid string",
+        });
+      }
+      const cleanTz = normalizeTimezone(timezone);
+      if (!isValidIanaTimezone(cleanTz)) {
+        return res.status(400).json({
+          success: false,
+          message: `"${timezone}" is not a valid IANA timezone`,
+        });
+      }
+      user.timezone = cleanTz;
+    }
+
+    if (preferences !== undefined) {
+      if (
+        typeof preferences !== "object" ||
+        preferences === null ||
+        Array.isArray(preferences)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Preferences must be an object",
+        });
+      }
+
+      if (!user.preferences) {
+        user.preferences = {
+          actionApproval: true,
+          promptChips: true,
+          notifyTaskAssigned: true,
+          notifyDeadlines: true,
+          notifyAiProposals: true,
+        };
+      }
+
+      if (typeof preferences.actionApproval === "boolean") {
+        user.preferences.actionApproval = preferences.actionApproval;
+      }
+      if (typeof preferences.promptChips === "boolean") {
+        user.preferences.promptChips = preferences.promptChips;
+      }
+      if (typeof preferences.notifyTaskAssigned === "boolean") {
+        user.preferences.notifyTaskAssigned = preferences.notifyTaskAssigned;
+      }
+      if (typeof preferences.notifyDeadlines === "boolean") {
+        user.preferences.notifyDeadlines = preferences.notifyDeadlines;
+      }
+      if (typeof preferences.notifyAiProposals === "boolean") {
+        user.preferences.notifyAiProposals = preferences.notifyAiProposals;
+      }
+    }
+
+    await user.save();
+
+    const updatedUser = await getUserWithRoleAndPreferences(user._id);
+
+    return res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update profile",
+      error: error.message,
+    });
+  }
+};
+
+router.put("/profile", verifyToken, handleUpdateProfile);
+router.patch("/profile", verifyToken, handleUpdateProfile);
+router.put("/me", verifyToken, handleUpdateProfile);
+router.patch("/me", verifyToken, handleUpdateProfile);
 
 export default router;

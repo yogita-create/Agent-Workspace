@@ -34,6 +34,14 @@ const epicSchema = new mongoose.Schema(
       type: String,
       default: "#6366f1",
     },
+    startDate: {
+      type: Date,
+      default: null,
+    },
+    dueDate: {
+      type: Date,
+      default: null,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -41,8 +49,16 @@ const epicSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
+
+epicSchema.virtual("isOverdue").get(function () {
+  if (!this.dueDate) return false;
+  const isDone = ["done", "Done", "completed", "Completed"].includes(this.status);
+  return new Date(this.dueDate) < new Date() && !isDone;
+});
 
 const Epic = mongoose.models.Epic || mongoose.model("Epic", epicSchema);
 export default Epic;

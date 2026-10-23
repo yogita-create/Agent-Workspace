@@ -397,6 +397,55 @@
   color: #14532d;
 }
 
+.alert-dismiss-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-primary, #f8fafc);
+  color: var(--text-muted, #64748b);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.alert-dismiss-btn:hover {
+  background: #fee2e2;
+  color: #ef4444;
+  border-color: #fca5a5;
+}
+
+.alert-type-task_assigned {
+  border-left: 4px solid #0ea5e9;
+}
+
+.circle-task_assigned {
+  background: #f0f9ff;
+  color: #0284c7;
+}
+
+.tag-task_assigned {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.alert-type-ai_proposal {
+  border-left: 4px solid #8b5cf6;
+}
+
+.circle-ai_proposal {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.tag-ai_proposal {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
 .empty-alerts-box {
   padding: 40px 20px;
   text-align: center;

@@ -45,6 +45,20 @@
   animation: fadeIn 0.3s ease;
 }
 
+.settings-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef2f2;
+  color: #ef4444;
+  border: 1px solid #fecaca;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  animation: fadeIn 0.3s ease;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -306,7 +320,8 @@
   color: var(--text-secondary, #475569);
 }
 
-.form-group input {
+.form-group input,
+.form-group select {
   height: 38px;
   padding: 0 12px;
   border: 1px solid var(--border-color, #cbd5e1);
@@ -316,11 +331,27 @@
   font-size: 13.5px;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.form-group input:focus {
+.form-group select {
+  cursor: pointer;
+}
+
+.form-group input:focus,
+.form-group select:focus {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.form-group input:disabled,
+.form-group input[readonly],
+.form-group select:disabled {
+  background: var(--bg-secondary, #f1f5f9);
+  color: var(--text-muted, #64748b);
+  cursor: not-allowed;
+  border-color: var(--border-color, #e2e8f0);
 }
 
 .profile-action-buttons {
@@ -345,9 +376,15 @@
   transition: background 0.15s ease, transform 0.15s ease;
 }
 
-.save-btn:hover {
+.save-btn:hover:not(:disabled) {
   background: var(--accent-primary-hover, #1e293b);
   transform: translateY(-1px);
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .settings-logout-btn {
@@ -566,6 +603,14 @@ input:checked + .slider:before {
   color: #10b981;
 }
 
+.status-offline {
+  color: #ef4444;
+}
+
+.status-checking {
+  color: #f59e0b;
+}
+
 /* ==========================================
    DARK MODE OVERRIDES
 ========================================== */
@@ -589,6 +634,20 @@ input:checked + .slider:before {
   background: rgba(139, 92, 246, 0.15);
   color: #c4b5fd;
   border-color: rgba(139, 92, 246, 0.3);
+}
+
+[data-theme="dark"] .form-group input:disabled,
+[data-theme="dark"] .form-group input[readonly],
+[data-theme="dark"] .form-group select:disabled {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted, #94a3b8);
+  border-color: var(--border-color, #334155);
+}
+
+[data-theme="dark"] .settings-error-banner {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 /* ==========================================

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Bell,
   AlertCircle,
@@ -8,64 +8,134 @@ import {
   FolderOpen,
   CheckCircle2,
   User,
-  ArrowRight,
+  Sparkles,
+  X,
 } from "lucide-react";
-import { getTaskAlerts } from "../utils/alertUtils";
 import axiosInstance from "../api/axiosInstance";
+import { useAuth } from "../context/AuthContext";
 import "./Alerts.css";
 
 function Alerts({ onNavigate }) {
-  const [tasks, setTasks] = useState([]);
+  const { user } = useAuth();
+  const [alerts, setAlerts] = useState([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    overdue: 0,
+    dueToday: 0,
+    dueTomorrow: 0,
+    upcoming: 0,
+    taskAssigned: 0,
+    aiProposals: 0,
+    activeAlertsCount: 0,
+  });
   const [loading, setLoading] = useState(true);
-  const [selectedFilter, setSelectedFilter] = useState("all"); // 'all' | 'overdue' | 'due_today' | 'due_tomorrow' | 'upcoming'
+  const [selectedFilter, setSelectedFilter] = useState("all");
 
-  const fetchTasks = async () => {
+  const fetchAlerts = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axiosInstance.get("/api/tasks");
+      const res = await axiosInstance.get("/api/alerts");
       const data = res.data;
-      if (data.success) {
-        setTasks(data.tasks || []);
+      if (data?.success) {
+        setAlerts(data.alerts || []);
+        setSummary(
+          data.summary || {
+            total: (data.alerts || []).length,
+            overdue: 0,
+            dueToday: 0,
+            dueTomorrow: 0,
+            upcoming: 0,
+            taskAssigned: 0,
+            aiProposals: 0,
+            activeAlertsCount: (data.alerts || []).length,
+          }
+        );
       }
     } catch (err) {
-      console.error("Load alerts tasks error:", err);
+      console.error("Load alerts error:", err);
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchTasks();
   }, []);
 
-  const handleMarkAsDone = async (taskId) => {
+  // Fetch on mount or when user notification preferences change
+  useEffect(() => {
+    fetchAlerts();
+  }, [
+    fetchAlerts,
+    user?.preferences?.notifyDeadlines,
+    user?.preferences?.notifyTaskAssigned,
+    user?.preferences?.notifyAiProposals,
+  ]);
+
+  // Refetch when window regains focus to keep data synchronized
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchAlerts();
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [fetchAlerts]);
+
+  const handleDismiss = async (alertId) => {
     try {
-      setTasks((prev) =>
-        prev.map((t) => (t._id === taskId ? { ...t, status: "done" } : t))
-      );
-      await axiosInstance.put(`/api/tasks/${taskId}`, { status: "done" });
+      setAlerts((prev) => prev.filter((a) => a.id !== alertId));
+      setSummary((prev) => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1),
+        activeAlertsCount: Math.max(0, prev.activeAlertsCount - 1),
+      }));
+      await axiosInstance.post(`/api/alerts/${alertId}/dismiss`);
     } catch (err) {
-      console.error("Mark task as done error:", err);
-      fetchTasks();
+      console.error("Dismiss alert error:", err);
+      fetchAlerts();
     }
   };
 
-  const alertsData = useMemo(() => {
-    return getTaskAlerts(tasks);
-  }, [tasks]);
+  const handleMarkAsDone = async (taskRawId, alertId) => {
+    try {
+      setAlerts((prev) =>
+        prev.filter((a) => a.id !== alertId && a.rawId !== taskRawId)
+      );
+      setSummary((prev) => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1),
+        activeAlertsCount: Math.max(0, prev.activeAlertsCount - 1),
+      }));
+      await axiosInstance.put(`/api/tasks/${taskRawId}`, { status: "done" });
+      fetchAlerts();
+    } catch (err) {
+      console.error("Mark task as done error:", err);
+      fetchAlerts();
+    }
+  };
 
   const displayedAlerts = useMemo(() => {
-    if (selectedFilter === "overdue") return alertsData.overdue;
-    if (selectedFilter === "due_today") return alertsData.dueToday;
-    if (selectedFilter === "due_tomorrow") return alertsData.dueTomorrow;
-    if (selectedFilter === "upcoming") return alertsData.upcoming;
-    return alertsData.allAlerts;
-  }, [alertsData, selectedFilter]);
+    if (selectedFilter === "overdue") {
+      return alerts.filter((a) => a.type === "overdue");
+    }
+    if (selectedFilter === "due_today") {
+      return alerts.filter((a) => a.type === "due_today");
+    }
+    if (selectedFilter === "due_tomorrow") {
+      return alerts.filter((a) => a.type === "due_tomorrow");
+    }
+    if (selectedFilter === "upcoming") {
+      return alerts.filter((a) => a.type === "upcoming");
+    }
+    if (selectedFilter === "task_assigned") {
+      return alerts.filter((a) => a.type === "task_assigned");
+    }
+    if (selectedFilter === "ai_proposal") {
+      return alerts.filter((a) => a.type === "ai_proposal");
+    }
+    return alerts;
+  }, [alerts, selectedFilter]);
 
   return (
     <main className="alerts-page">
       {/* ==========================================
-          HEADER (IMAGE 3)
+          HEADER
       ========================================== */}
       <header className="alerts-header">
         <div className="alerts-header-icon">
@@ -73,12 +143,12 @@ function Alerts({ onNavigate }) {
         </div>
         <div className="alerts-header-text">
           <h1>Alerts</h1>
-          <p>Stay updated with tasks that need your attention.</p>
+          <p>Stay updated with tasks and events that need your attention.</p>
         </div>
       </header>
 
       {/* ==========================================
-          4 SUMMARY STATS CARDS (IMAGE 3)
+          4 SUMMARY STATS CARDS
       ========================================== */}
       <section className="alerts-stats-grid">
         {/* Total Alerts */}
@@ -91,7 +161,7 @@ function Alerts({ onNavigate }) {
           </div>
           <div className="alert-stat-info">
             <span className="alert-stat-label">Total Alerts</span>
-            <span className="alert-stat-value">{alertsData.totalCount}</span>
+            <span className="alert-stat-value">{summary.total}</span>
           </div>
         </div>
 
@@ -106,7 +176,7 @@ function Alerts({ onNavigate }) {
           <div className="alert-stat-info">
             <span className="alert-stat-label">Overdue</span>
             <span className="alert-stat-value" style={{ color: "#ef4444" }}>
-              {alertsData.overdueCount}
+              {summary.overdue}
             </span>
           </div>
         </div>
@@ -122,7 +192,7 @@ function Alerts({ onNavigate }) {
           <div className="alert-stat-info">
             <span className="alert-stat-label">Due Today</span>
             <span className="alert-stat-value" style={{ color: "#f97316" }}>
-              {alertsData.dueTodayCount}
+              {summary.dueToday}
             </span>
           </div>
         </div>
@@ -138,20 +208,20 @@ function Alerts({ onNavigate }) {
           <div className="alert-stat-info">
             <span className="alert-stat-label">Due Tomorrow</span>
             <span className="alert-stat-value" style={{ color: "#3b82f6" }}>
-              {alertsData.dueTomorrowCount}
+              {summary.dueTomorrow}
             </span>
           </div>
         </div>
       </section>
 
       {/* ==========================================
-          NEEDS YOUR ATTENTION CARD (IMAGE 3)
+          NEEDS YOUR ATTENTION CARD
       ========================================== */}
       <section className="alerts-main-card">
         <div className="alerts-main-header">
           <div className="alerts-main-title">
             <h2>Needs Your Attention</h2>
-            <p>Tasks that require your attention based on their deadlines.</p>
+            <p>Notifications filtered according to your active workspace preferences.</p>
           </div>
 
           <div className="alerts-counter-pill">
@@ -168,7 +238,7 @@ function Alerts({ onNavigate }) {
             }`}
             onClick={() => setSelectedFilter("all")}
           >
-            All Alerts ({alertsData.totalCount})
+            All Alerts ({summary.total})
           </button>
           <button
             type="button"
@@ -177,7 +247,7 @@ function Alerts({ onNavigate }) {
             }`}
             onClick={() => setSelectedFilter("overdue")}
           >
-            Overdue ({alertsData.overdueCount})
+            Overdue ({summary.overdue})
           </button>
           <button
             type="button"
@@ -186,7 +256,7 @@ function Alerts({ onNavigate }) {
             }`}
             onClick={() => setSelectedFilter("due_today")}
           >
-            Due Today ({alertsData.dueTodayCount})
+            Due Today ({summary.dueToday})
           </button>
           <button
             type="button"
@@ -195,7 +265,7 @@ function Alerts({ onNavigate }) {
             }`}
             onClick={() => setSelectedFilter("due_tomorrow")}
           >
-            Due Tomorrow ({alertsData.dueTomorrowCount})
+            Due Tomorrow ({summary.dueTomorrow})
           </button>
           <button
             type="button"
@@ -204,8 +274,30 @@ function Alerts({ onNavigate }) {
             }`}
             onClick={() => setSelectedFilter("upcoming")}
           >
-            Upcoming ({alertsData.upcomingCount})
+            Upcoming ({summary.upcoming})
           </button>
+          {(summary.taskAssigned > 0 || selectedFilter === "task_assigned") && (
+            <button
+              type="button"
+              className={`alert-tab-btn ${
+                selectedFilter === "task_assigned" ? "active" : ""
+              }`}
+              onClick={() => setSelectedFilter("task_assigned")}
+            >
+              Assigned ({summary.taskAssigned || 0})
+            </button>
+          )}
+          {(summary.aiProposals > 0 || selectedFilter === "ai_proposal") && (
+            <button
+              type="button"
+              className={`alert-tab-btn ${
+                selectedFilter === "ai_proposal" ? "active" : ""
+              }`}
+              onClick={() => setSelectedFilter("ai_proposal")}
+            >
+              AI Proposals ({summary.aiProposals || 0})
+            </button>
+          )}
         </div>
 
         {/* Detailed Alerts List */}
@@ -214,12 +306,12 @@ function Alerts({ onNavigate }) {
             <div className="empty-alerts-box">
               <CheckCircle2 size={36} color="#10b981" style={{ marginBottom: 8 }} />
               <h3>All clear!</h3>
-              <p>There are no tasks requiring attention in this category.</p>
+              <p>There are no alerts requiring attention in this category.</p>
             </div>
           ) : (
-            displayedAlerts.map((item, index) => (
+            displayedAlerts.map((item) => (
               <div
-                key={`${item.task._id}-${index}`}
+                key={item.id}
                 className={`alert-detail-card alert-type-${item.type}`}
               >
                 {/* Left Circle Icon */}
@@ -230,6 +322,10 @@ function Alerts({ onNavigate }) {
                     <Clock size={20} />
                   ) : item.type === "due_tomorrow" ? (
                     <Calendar size={20} />
+                  ) : item.type === "task_assigned" ? (
+                    <User size={20} />
+                  ) : item.type === "ai_proposal" ? (
+                    <Sparkles size={20} />
                   ) : (
                     <Clock size={20} />
                   )}
@@ -254,31 +350,49 @@ function Alerts({ onNavigate }) {
                   <p className="alert-card-message">{item.message}</p>
 
                   <div className="alert-metadata-row">
-                    <span className="meta-item">
-                      <Calendar size={13} />
-                      {item.deadlineStr}
-                    </span>
+                    {item.deadlineStr && (
+                      <span className="meta-item">
+                        <Calendar size={13} />
+                        {item.deadlineStr}
+                      </span>
+                    )}
                     <span className="meta-item">
                       <FolderOpen size={13} />
                       {item.projectName}
                     </span>
-                    <span className="meta-item">
-                      <User size={13} />
-                      {item.assigneeName}
-                    </span>
+                    {item.assigneeName && (
+                      <span className="meta-item">
+                        <User size={13} />
+                        {item.assigneeName}
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 {/* Quick Actions */}
                 <div className="alert-actions-col">
+                  {item.task && item.task.status !== "done" && (
+                    <button
+                      type="button"
+                      className="alert-done-btn"
+                      onClick={() =>
+                        handleMarkAsDone(item.rawId || item.task._id, item.id)
+                      }
+                      title="Mark task as done"
+                    >
+                      <CheckCircle2 size={13} />
+                      Mark as Done
+                    </button>
+                  )}
+
                   <button
                     type="button"
-                    className="alert-done-btn"
-                    onClick={() => handleMarkAsDone(item.task._id)}
-                    title="Mark task as done"
+                    className="alert-dismiss-btn"
+                    onClick={() => handleDismiss(item.id)}
+                    title="Dismiss alert"
                   >
-                    <CheckCircle2 size={13} />
-                    Mark as Done
+                    <X size={13} />
+                    Dismiss
                   </button>
                 </div>
               </div>

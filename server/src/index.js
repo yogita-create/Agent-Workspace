@@ -15,6 +15,7 @@ import inviteRoutes from "./routes/invite.js";
 import epicRoutes from "./routes/epicRoutes.js";
 import storyRoutes from "./routes/storyRoutes.js";
 import boardRoutes from "./routes/board.js";
+import alertRoutes from "./routes/alerts.js";
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/epics", epicRoutes);
 app.use("/api/stories", storyRoutes);
 app.use("/api/board", boardRoutes);
+app.use("/api/alerts", alertRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/chat/sessions", chatSessionRoutes);
 app.use("/api/actions", actionRoutes);

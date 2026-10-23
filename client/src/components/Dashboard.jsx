@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   Folder,
   CheckSquare,
@@ -14,19 +14,85 @@ import {
   FolderOpen,
   ArrowRight,
   X,
+  Sparkles,
+  User,
 } from "lucide-react";
-import { getTaskAlerts } from "../utils/alertUtils";
 import axiosInstance from "../api/axiosInstance";
+import { useAuth } from "../context/AuthContext";
 import "./Dashboard.css";
 
 function Dashboard({ onNavigate }) {
+  const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [alertsList, setAlertsList] = useState([]);
+  const [alertsSummary, setAlertsSummary] = useState({
+    total: 0,
+    overdue: 0,
+    dueToday: 0,
+    dueTomorrow: 0,
+    upcoming: 0,
+    activeAlertsCount: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [showNotifPopover, setShowNotifPopover] = useState(false);
   const [currentTimeStr, setCurrentTimeStr] = useState("");
 
   const popoverRef = useRef(null);
+
+  const fetchAlerts = useCallback(async () => {
+    try {
+      const res = await axiosInstance.get("/api/alerts");
+      if (res.data?.success) {
+        setAlertsList(res.data.alerts || []);
+        setAlertsSummary(
+          res.data.summary || {
+            total: (res.data.alerts || []).length,
+            overdue: 0,
+            dueToday: 0,
+            dueTomorrow: 0,
+            upcoming: 0,
+            activeAlertsCount: (res.data.alerts || []).length,
+          }
+        );
+      }
+    } catch (err) {
+      console.error("Dashboard fetch alerts error:", err);
+    }
+  }, []);
+
+  // Fetch alerts on mount and whenever user preferences change
+  useEffect(() => {
+    fetchAlerts();
+  }, [
+    fetchAlerts,
+    user?.preferences?.notifyDeadlines,
+    user?.preferences?.notifyTaskAssigned,
+    user?.preferences?.notifyAiProposals,
+  ]);
+
+  // Refetch alerts on window focus
+  useEffect(() => {
+    const handleFocus = () => fetchAlerts();
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [fetchAlerts]);
+
+  const handleDismissAlert = async (e, alertId) => {
+    e.stopPropagation();
+    try {
+      setAlertsList((prev) => prev.filter((a) => a.id !== alertId));
+      setAlertsSummary((prev) => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1),
+        activeAlertsCount: Math.max(0, prev.activeAlertsCount - 1),
+      }));
+      await axiosInstance.post(`/api/alerts/${alertId}/dismiss`);
+    } catch (err) {
+      console.error("Dismiss alert error:", err);
+      fetchAlerts();
+    }
+  };
 
   // Time formatter
   useEffect(() => {
@@ -130,9 +196,8 @@ function Dashboard({ onNavigate }) {
   ).length;
   const lowPriorityCount = tasks.filter((t) => t.priority === "low").length;
 
-  // Alerts
-  const alertsData = getTaskAlerts(tasks);
-  const totalAlertsCount = alertsData.totalCount;
+  // Alerts (derived from server /api/alerts)
+  const totalAlertsCount = alertsSummary.total;
 
   // SVG Gauge calculations
   const radius = 22;
@@ -204,22 +269,22 @@ function Dashboard({ onNavigate }) {
 
           <div className="notif-summary-pills">
             <span className="pill-active-count">
-              {alertsData.activeAlertsCount} active
+              {alertsSummary.activeAlertsCount ?? alertsList.length} active
             </span>
             <span className="pill-overdue-count">
-              {alertsData.overdueCount} overdue
+              {alertsSummary.overdue ?? 0} overdue
             </span>
           </div>
 
           <div className="notif-items-list">
-            {alertsData.allAlerts.length === 0 ? (
+            {alertsList.length === 0 ? (
               <div className="notif-empty-state">
-                🎉 No pending alerts! All tasks are on schedule.
+                🎉 No pending alerts! All notifications are up to date.
               </div>
             ) : (
-              alertsData.allAlerts.slice(0, 5).map((alert, idx) => (
+              alertsList.slice(0, 5).map((alert) => (
                 <div
-                  key={`${alert.task._id}-${idx}`}
+                  key={alert.id}
                   className="notif-item-card"
                   onClick={() => {
                     setShowNotifPopover(false);
@@ -232,26 +297,40 @@ function Dashboard({ onNavigate }) {
                         ? "icon-overdue-bg"
                         : alert.type === "due_today"
                         ? "icon-today-bg"
+                        : alert.type === "ai_proposal"
+                        ? "icon-purple-bg"
                         : "icon-tomorrow-bg"
                     }`}
                   >
                     {alert.type === "overdue" ? (
                       <AlertTriangle size={16} />
+                    ) : alert.type === "ai_proposal" ? (
+                      <Sparkles size={16} />
+                    ) : alert.type === "task_assigned" ? (
+                      <User size={16} />
                     ) : (
                       <Clock size={16} />
                     )}
                   </div>
 
                   <div className="notif-item-content">
-                    <h4 className="notif-item-title">
-                      {alert.type === "overdue"
-                        ? "Task Overdue"
-                        : alert.type === "due_today"
-                        ? "Due Today"
-                        : alert.type === "due_tomorrow"
-                        ? "Due Tomorrow"
-                        : "Upcoming Due"}
-                    </h4>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <h4 className="notif-item-title">{alert.title}</h4>
+                      <button
+                        type="button"
+                        className="notif-dismiss-btn"
+                        onClick={(e) => handleDismissAlert(e, alert.id)}
+                        title="Dismiss notification"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
                     <p className="notif-item-desc">{alert.message}</p>
                     <span className="notif-item-project">
                       <FolderOpen size={11} />

@@ -10,15 +10,29 @@ import {
   AlertTriangle,
   User,
   Sparkles,
+  Edit2,
+  Calendar,
 } from "lucide-react";
 import axiosInstance from "../api/axiosInstance";
 import "./EpicView.css";
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
 
 function EpicView({
   projectId = "all",
   projects = [],
   refreshTrigger = 0,
   onOpenCreateEpic,
+  onOpenEditEpic,
   onOpenCreateTask,
 }) {
   const [epics, setEpics] = useState([]);
@@ -45,8 +59,12 @@ function EpicView({
   const [storyDescription, setStoryDescription] = useState("");
   const [storyPriority, setStoryPriority] = useState("medium");
   const [storyPoints, setStoryPoints] = useState("");
+  const [storyDueDate, setStoryDueDate] = useState("");
   const [submittingStory, setSubmittingStory] = useState(false);
   const [storyError, setStoryError] = useState("");
+
+  // Modal story creation/editing state
+  const [storyModalData, setStoryModalData] = useState(null); // { story, epic }
 
   // Fetch stories for a specific epic
   const fetchStoriesForEpic = useCallback(async (epicId) => {
@@ -180,6 +198,10 @@ function EpicView({
         payload.storyPoints = Number(storyPoints) || 0;
       }
 
+      if (storyDueDate) {
+        payload.dueDate = new Date(storyDueDate).toISOString();
+      }
+
       if (projectId && projectId !== "all") {
         payload.projectId = projectId;
       }
@@ -202,6 +224,7 @@ function EpicView({
       setStoryDescription("");
       setStoryPriority("medium");
       setStoryPoints("");
+      setStoryDueDate("");
       setAddingStoryForEpic(null);
     } catch (err) {
       console.error("Create story error:", err);
@@ -353,6 +376,36 @@ function EpicView({
                     {statusInfo.label}
                   </span>
 
+                  {/* Epic Dates and Overdue Badge */}
+                  {(epic.startDate || epic.dueDate) && (
+                    <div
+                      className={`epic-deadline-info ${
+                        epic.isOverdue ? "overdue-text" : ""
+                      }`}
+                      title={
+                        epic.isOverdue
+                          ? "Overdue epic!"
+                          : epic.dueDate
+                          ? `Due: ${formatDate(epic.dueDate)}`
+                          : `Starts: ${formatDate(epic.startDate)}`
+                      }
+                    >
+                      <Clock size={12} />
+                      <span>
+                        {epic.startDate && epic.dueDate
+                          ? `${formatDate(epic.startDate)} – Due ${formatDate(
+                              epic.dueDate
+                            )}`
+                          : epic.dueDate
+                          ? `Due ${formatDate(epic.dueDate)}`
+                          : `Starts ${formatDate(epic.startDate)}`}
+                      </span>
+                      {epic.isOverdue && (
+                        <span className="overdue-badge">Overdue</span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Summary: X of Y stories done (Using server progress values) */}
                   <div
                     className="epic-progress-summary"
@@ -378,6 +431,19 @@ function EpicView({
                     </div>
                   </div>
 
+                  {/* Edit Epic button */}
+                  {onOpenEditEpic && (
+                    <button
+                      type="button"
+                      className="epic-edit-btn"
+                      onClick={() => onOpenEditEpic(epic)}
+                      title="Edit Epic"
+                    >
+                      <Edit2 size={13} />
+                      <span>Edit</span>
+                    </button>
+                  )}
+
                   {/* Add story action button */}
                   <button
                     type="button"
@@ -387,6 +453,7 @@ function EpicView({
                       setAddingStoryForEpic(
                         addingStoryForEpic === epic._id ? null : epic._id
                       );
+                      setStoryDueDate("");
                       setStoryError("");
                     }}
                     title="Add User Story to this Epic"
@@ -448,6 +515,22 @@ function EpicView({
                             max="100"
                             value={storyPoints}
                             onChange={(e) => setStoryPoints(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="story-form-field" style={{ flex: 1.5 }}>
+                          <label>Due Date</label>
+                          <input
+                            type="date"
+                            value={storyDueDate}
+                            max={
+                              epic.dueDate
+                                ? new Date(epic.dueDate)
+                                    .toISOString()
+                                    .split("T")[0]
+                                : undefined
+                            }
+                            onChange={(e) => setStoryDueDate(e.target.value)}
                           />
                         </div>
                       </div>
@@ -600,6 +683,28 @@ function EpicView({
                                   {sStatus.label}
                                 </span>
 
+                                {/* Story Due Date & Overdue Badge */}
+                                {story.dueDate && (
+                                  <div
+                                    className={`story-deadline-info ${
+                                      story.isOverdue ? "overdue-text" : ""
+                                    }`}
+                                    title={
+                                      story.isOverdue
+                                        ? "Overdue story!"
+                                        : `Due: ${formatDate(story.dueDate)}`
+                                    }
+                                  >
+                                    <Clock size={12} />
+                                    <span>Due {formatDate(story.dueDate)}</span>
+                                    {story.isOverdue && (
+                                      <span className="overdue-badge">
+                                        Overdue
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+
                                 {/* Assignee */}
                                 <div
                                   className="story-assignee"
@@ -622,6 +727,18 @@ function EpicView({
                                 >
                                   {taskCount} task{taskCount === 1 ? "" : "s"}
                                 </span>
+
+                                {/* Edit Story button */}
+                                <button
+                                  type="button"
+                                  className="story-edit-btn"
+                                  onClick={() =>
+                                    setStoryModalData({ story, epic })
+                                  }
+                                  title="Edit User Story"
+                                >
+                                  <Edit2 size={12} />
+                                </button>
                               </div>
                             </div>
 
@@ -737,7 +854,257 @@ function EpicView({
           );
         })}
       </div>
+
+      {/* CREATE / EDIT STORY MODAL */}
+      {storyModalData && (
+        <StoryModal
+          storyToEdit={storyModalData.story}
+          epic={storyModalData.epic}
+          onClose={() => setStoryModalData(null)}
+          onStorySaved={(savedStory) => {
+            const eId = storyModalData.epic?._id;
+            if (eId) {
+              setStoriesByEpic((prev) => {
+                const existing = prev[eId] || [];
+                const idx = existing.findIndex((s) => s._id === savedStory._id);
+                if (idx >= 0) {
+                  const updated = [...existing];
+                  updated[idx] = savedStory;
+                  return { ...prev, [eId]: updated };
+                }
+                return { ...prev, [eId]: [...existing, savedStory] };
+              });
+            }
+            fetchEpics();
+          }}
+        />
+      )}
     </section>
+  );
+}
+
+/* Modal for creating or editing a User Story */
+function StoryModal({
+  storyToEdit = null,
+  epic = null,
+  onClose,
+  onStorySaved,
+}) {
+  const [title, setTitle] = useState(
+    storyToEdit?.title || storyToEdit?.name || ""
+  );
+  const [description, setDescription] = useState(
+    storyToEdit?.description || ""
+  );
+  const [priority, setPriority] = useState(storyToEdit?.priority || "medium");
+  const [status, setStatus] = useState(storyToEdit?.status || "todo");
+  const [storyPoints, setStoryPoints] = useState(
+    storyToEdit?.storyPoints !== undefined && storyToEdit?.storyPoints !== null
+      ? storyToEdit.storyPoints
+      : ""
+  );
+  const [dueDate, setDueDate] = useState(
+    storyToEdit?.dueDate
+      ? new Date(storyToEdit.dueDate).toISOString().split("T")[0]
+      : ""
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const maxDueDate = epic?.dueDate
+    ? new Date(epic.dueDate).toISOString().split("T")[0]
+    : undefined;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      setError("Story title is required.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const payload = {
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        status,
+        dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+      };
+
+      if (storyPoints !== "") {
+        payload.storyPoints = Number(storyPoints) || 0;
+      }
+
+      if (!storyToEdit && epic) {
+        payload.epicId = epic._id;
+      }
+
+      const res = storyToEdit
+        ? await axiosInstance.put(`/api/stories/${storyToEdit._id}`, payload)
+        : await axiosInstance.post("/api/stories", payload);
+
+      if (res.data?.success !== false) {
+        if (onStorySaved) {
+          onStorySaved(res.data?.story || res.data);
+        }
+        onClose();
+      } else {
+        throw new Error(res.data?.message || "Failed to save story");
+      }
+    } catch (err) {
+      console.error("Save story error:", err);
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to save story."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="task-modal-overlay"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !loading) {
+          onClose();
+        }
+      }}
+    >
+      <div className="task-modal-content">
+        <div className="task-modal-header">
+          <div>
+            <h2>{storyToEdit ? "Edit User Story" : "Create New Story"}</h2>
+            <p>
+              {epic
+                ? `Epic: ${epic.title || epic.name}`
+                : "Manage user story details and scope"}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="task-modal-close"
+            onClick={onClose}
+            disabled={loading}
+          >
+            ×
+          </button>
+        </div>
+
+        {error && <div className="task-form-error">{error}</div>}
+
+        <form className="task-form" onSubmit={handleSubmit}>
+          <div className="task-form-group">
+            <label>Story Title *</label>
+            <input
+              type="text"
+              placeholder="e.g. As a user, I want to reset my password"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="task-form-row">
+            <div className="task-form-group">
+              <label>Priority</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+
+            {storyToEdit && (
+              <div className="task-form-group">
+                <label>Status</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  <option value="todo">To Do</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="in_review">In Review</option>
+                  <option value="done">Done</option>
+                </select>
+              </div>
+            )}
+
+            <div className="task-form-group">
+              <label>Story Points</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                placeholder="e.g. 5"
+                value={storyPoints}
+                onChange={(e) => setStoryPoints(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="task-form-group">
+            <label>Due Date</label>
+            <input
+              type="date"
+              value={dueDate}
+              max={maxDueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
+            {maxDueDate && (
+              <span
+                style={{
+                  fontSize: "11px",
+                  color: "#64748b",
+                  marginTop: "2px",
+                }}
+              >
+                Must not exceed Epic due date ({formatDate(epic.dueDate)})
+              </span>
+            )}
+          </div>
+
+          <div className="task-form-group">
+            <label>Description / Acceptance Criteria</label>
+            <textarea
+              placeholder="Acceptance criteria, user persona context..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows="3"
+            />
+          </div>
+
+          <div className="task-modal-actions">
+            <button
+              type="button"
+              className="task-cancel-btn"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="task-submit-btn"
+              disabled={loading || !title.trim()}
+              style={{ background: "#4f46e5" }}
+            >
+              {loading ? "Saving..." : storyToEdit ? "Save Changes" : "Create Story"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
