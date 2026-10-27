@@ -287,7 +287,6 @@ E-Commerce Application
 ```
 
 This hierarchy allows the team to understand how individual tasks contribute to larger project objectives.
-
 ---
 
 ## 🌟 Benefits
@@ -382,20 +381,4 @@ The application will then be available through the local development URL shown i
 
 ---
 
-## 🤝 Contribution
-
-Contributions are welcome.
-
-To contribute:
-
-1. Create a new branch.
-2. Make your changes.
-3. Test the changes.
-4. Commit your changes.
-5. Push the branch.
-6. Create a Pull Request.
----
-
 **Agent Workspace — Plan. Organize. Collaborate. Deliver.**
-
-
