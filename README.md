@@ -44,11 +44,14 @@ Built end to end: auth, access control, data modeling, REST API, UI, and deploym
 
 ## Screenshots
 
-> Add 3 screenshots here. These sell the project faster than any text.
+### Kanban Board
+![Kanban Board](docs/board.png)
 
-| Kanban Board | Epics View | Team Page |
-| --- | --- | --- |
-| `docs/board.png` | `docs/epics.png` | `docs/team.png` |
+### Epics View
+![Epics View](docs/epics.png)
+
+### Team Page
+![Team Page](docs/team.png)
 
 ---
 
@@ -214,6 +217,6 @@ agent-workspace/
 
 ## Author
 
-**Yogita Sawant** 
+**Yogita** — Full-stack developer (React, Node.js, Express, MongoDB)
 
 [GitHub](<github-url>) · [LinkedIn](<linkedin-url>)
