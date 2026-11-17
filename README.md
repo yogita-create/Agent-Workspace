@@ -1,383 +1,219 @@
-# Agent-Workspace
+<div align="center">
 
-Agent Workspace is a **project management and team collaboration platform** designed to help teams organize projects, manage work, track progress, and collaborate efficiently from a centralized workspace.
+# Agent Workspace
 
-The platform provides a structured way to manage **projects, epics, features, user stories, tasks, and team activities**, making it easier for teams to plan work and monitor project progress.
+### Plan it. Assign it. Ship it.
 
----
+A project management app where companies turn big goals into **Epics → Stories → Tasks**, assign them to the right people, and track progress on a **Kanban board**.
 
-## 🚀 Overview
+![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-000000?style=flat&logo=express&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat&logo=mongodb&logoColor=white)
+![JWT](https://img.shields.io/badge/Auth-JWT-000000?style=flat&logo=jsonwebtokens&logoColor=white)
+![Status](https://img.shields.io/badge/status-live-brightgreen?style=flat)
 
-Agent Workspace provides a centralized workspace where teams can:
+[**Live Demo**](<frontend-url>) · [**API**](<backend-url>) · [**Report a Bug**](<repo-url>/issues)
 
-* Create and manage projects
-* Organize project requirements using **Epics, Features, and User Stories**
-* Create and assign tasks to team members
-* Track task and project progress
-* Collaborate with team members
-* Manage project-related information in one place
-* Monitor work through a structured project hierarchy
-
-The goal is to reduce scattered project information and provide teams with a clear view of **what needs to be done, who is responsible, and how the project is progressing**.
+</div>
 
 ---
 
-## 🎯 Objectives
+## The problem
 
-The main objectives of Agent Workspace are:
+In most teams, work is scattered across chats, sheets, and people's memory. Nobody is fully sure who owns what, what is blocked, or how far a project really is. Managers ask for updates. Developers lose time answering them.
 
-* Provide a centralized platform for project management
-* Improve collaboration between team members
-* Organize project requirements in a structured hierarchy
-* Make task ownership and responsibilities clear
-* Improve project visibility and progress tracking
-* Simplify day-to-day project coordination
-* Reduce dependency on multiple disconnected tools
+## The solution
+
+Agent Workspace puts everything in one workspace:
+
+| Problem in a team | How Agent Workspace solves it |
+| --- | --- |
+| Big goals never become clear tasks | Epic → Story → Task hierarchy breaks them down step by step |
+| Nobody knows who owns what | Every task has an owner, assigned by the manager |
+| Progress is unclear | Kanban board shows status of all work at a glance |
+| Everyone can do everything | Admin / Manager / Employee roles control who can do what |
+| Company data is mixed or exposed | Each organization has its own private workspace |
+| Adding new people is slow | Invite link, and they are in |
+
+**Built for:** small and mid-size teams and companies that want a simple, clear way to plan and track work.
+
+Built end to end: auth, access control, data modeling, REST API, UI, and deployment.
 
 ---
 
-## 🏗️ Project Structure
+## Screenshots
 
-Agent Workspace follows a hierarchical approach for organizing project work:
+> Add 3 screenshots here. These sell the project faster than any text.
+
+| Kanban Board | Epics View | Team Page |
+| --- | --- | --- |
+| `docs/board.png` | `docs/epics.png` | `docs/team.png` |
+
+---
+
+## Highlights
+
+- **Work hierarchy** — Epic → Story → Task, with Kanban board and List view in one Tasks page
+- **Drag-and-drop board** — move tasks between statuses and reposition them
+- **Organizations** — every team gets its own private workspace, with data fully separated
+- **Invite links** — add teammates in one click, no manual setup
+- **Role-based access** — Admin, Manager, Employee, enforced on both API and UI
+- **JWT authentication** — protected routes on the client, verified tokens on the server
+- **Team page** — see who is in your organization and their roles
+- **Private chat sessions**
+- **Light / dark theme**
+
+---
+
+## How it works
 
 ```text
 Project
-   │
-   ├── Epic
-   │     │
-   │     ├── Feature
-   │     │      │
-   │     │      └── User Story
-   │     │              │
-   │     │              └── Task
-   │     │
-   │     └── Feature
-   │
-   └── Epic
+ └── Epic            Big goal or major area of work
+      └── Story      One requirement from the user's point of view
+           └── Task  One piece of work, tracked on the board
 ```
 
-### Project
-
-A project represents the overall work or initiative being managed by a team.
-
-### Epic
-
-An Epic represents a large business requirement or major area of work within a project.
-
-### Feature
-
-A Feature represents a specific functionality or capability required to achieve an Epic.
-
-### User Story
-
-A User Story describes a requirement from the perspective of the user or stakeholder.
-
-### Task
-
-A Task represents an actionable piece of work required to complete a User Story or other project activity.
-
----
-
-## ✨ Key Features
-
-### 📁 Project Management
-
-* Create and manage projects
-* Maintain project information
-* Track project progress
-* Organize project-related work
-* Manage project members and responsibilities
-
-### 🧩 Epic Management
-
-* Create Epics
-* Define Epic details
-* Associate Features with Epics
-* Track Epic progress
-* Manage Epic lifecycle
-
-### ⚙️ Feature Management
-
-* Create Features under Epics
-* Define Feature requirements
-* Associate Features with User Stories
-* Track Feature status and progress
-
-### 📝 User Story Management
-
-* Create User Stories
-* Define user requirements
-* Associate stories with Features
-* Track story progress
-* Manage story status
-
-### ✅ Task Management
-
-* Create tasks
-* Assign tasks to team members
-* Set task status
-* Track task progress
-* Manage task ownership
-* Update task details
-
-### 👥 Team Collaboration
-
-* Centralized team workspace
-* Team member management
-* Work assignment
-* Responsibility tracking
-* Better visibility into team activities
-
----
-
-## 🔄 Project Workflow
-
-A typical workflow in Agent Workspace can be represented as:
+**Example**
 
 ```text
-Create Project
-      ↓
-Create Epic
-      ↓
-Create Feature
-      ↓
-Create User Story
-      ↓
-Create Tasks
-      ↓
-Assign Work
-      ↓
-Update Progress
-      ↓
-Track & Complete
+E-Commerce App
+ ├── Epic: User Management
+ │    ├── Story: User can register
+ │    │    └── Task: Build registration API
+ │    └── Story: User can log in
+ │         └── Task: Add JWT authentication
+ └── Epic: Orders
+      └── Story: User can track an order
+           └── Task: Add order status endpoint
 ```
 
-This structure allows teams to break down large requirements into smaller, manageable pieces of work.
+Task status flow: `To Do → In Progress → Review → Done`
 
 ---
-## 📊 Work Tracking
 
-Agent Workspace helps teams track work throughout its lifecycle.
+## Roles
 
-A typical task workflow may include:
+| Role | What they can do |
+| --- | --- |
+| **Admin** | Manage the organization, members, and roles |
+| **Manager** | Create projects, Epics, Stories, Tasks; assign work |
+| **Employee** | See assigned work, update status, move tasks on the board |
+
+---
+
+## Architecture
 
 ```text
-To Do → In Progress → Review → Completed
+┌──────────────┐   HTTPS / JSON   ┌───────────────────┐        ┌───────────────┐
+│ React client │ ───────────────▶ │ Express REST API  │ ─────▶ │ MongoDB Atlas │
+│              │ ◀─────────────── │ JWT + role checks │ ◀───── │               │
+└──────────────┘                  └───────────────────┘        └───────────────┘
 ```
 
-The exact workflow can be configured according to the project's requirements.
+- **Client:** React SPA. Routes are protected and the UI changes by role.
+- **API:** Stateless Express server. Every request is checked for a valid token, then for organization and role, before any data is touched.
+- **Database:** MongoDB. Every project and task belongs to an organization, and every query is filtered by it.
+
+### Key decisions
+
+| Decision | Reason |
+| --- | --- |
+| Every query is scoped to the organization | One team can never read another team's data |
+| Project visibility is org-wide | Keeps v1 simple; per-project access is the next step |
+| Epics, Stories, and Board live in one Tasks page | Users stay in one place instead of jumping between menus |
+| Invite-link onboarding | Fits how small teams actually add people |
+| Stateless JWT auth | Easy to scale and deploy on free-tier hosting |
 
 ---
 
-## 👤 User Roles
+## Tech stack
 
-The platform can support different users based on their responsibilities within a project.
-
-| Role            | Responsibility                                                   |
-| --------------- | ---------------------------------------------------------------- |
-| Project Manager | Manage projects, requirements, team members and overall progress |
-| Team Lead       | Manage assigned work and monitor team activities                 |
-| Developer       | Work on assigned features, stories and tasks                     |
-| Team Member     | Complete assigned project activities                             |
-| Stakeholder     | Review project information and progress                          |
-
----
-
-## 🛠️ Technology Stack
-
-> Update this section according to the technologies used in your implementation.
-
-### Frontend
-
-* React.js
-* HTML5
-* CSS3
-* JavaScript
-* React Router
-
-### Backend
-
-* Node.js
-* REST APIs
-
-### Database
-
-* MongoDB / SQL Server / MySQL
-
-### Development Tools
-
-* Visual Studio Code
-* Git
-* GitHub
-* Postman
+| Layer | Tech |
+| --- | --- |
+| Frontend | React, React Router, CSS |
+| Backend | Node.js, Express.js |
+| Database | MongoDB Atlas |
+| Auth | JSON Web Tokens |
+| Hosting | Render (API), Vercel (client) |
+| Tools | Git, GitHub, VS Code, Postman |
 
 ---
 
-## 📂 Suggested Project Structure
+## Run it locally
 
-```text
-agent-workspace/
-│
-├── src/
-│   ├── components/
-│   ├── pages/
-│   ├── services/
-│   ├── hooks/
-│   ├── utils/
-│   ├── assets/
-│   ├── App.jsx
-│   └── main.jsx
-│
-├── public/
-│
-├── package.json
-├── README.md
-└── .gitignore
-```
-
----
-
-## 🔐 Authentication & Access
-
-The application can provide authentication and role-based access to ensure that users can access functionality according to their responsibilities.
-
-Possible authentication flow:
-
-```text
-Login
-  ↓
-Authentication
-  ↓
-User Verification
-  ↓
-Workspace
-  ↓
-Role-Based Access
-```
-
----
-
-## 📌 Example Use Case
-
-Suppose a team is developing an **E-Commerce Application**.
-
-The project can be organized as:
-
-```text
-E-Commerce Application
-│
-├── User Management
-│   ├── Registration
-│   │   └── Create Registration API
-│   └── Login
-│       └── Implement Authentication
-│
-├── Product Management
-│   ├── Product Catalog
-│   │   └── Create Product Listing
-│   └── Product Search
-│       └── Implement Search API
-│
-└── Order Management
-    ├── Order Creation
-    │   └── Create Order API
-    └── Order Tracking
-        └── Implement Order Status
-```
-
-This hierarchy allows the team to understand how individual tasks contribute to larger project objectives.
----
-
-## 🌟 Benefits
-
-Agent Workspace helps teams:
-
-* Organize complex projects
-* Break large requirements into manageable work
-* Improve team communication
-* Clearly define responsibilities
-* Track project progress
-* Improve visibility across projects
-* Maintain a structured project hierarchy
-* Manage work from a centralized workspace
-
----
-
-## 🚧 Future Enhancements
-
-Potential future improvements include:
-
-* Real-time notifications
-* Team chat
-* Comments and mentions
-* File and document sharing
-* Activity timeline
-* Advanced dashboards
-* Project analytics
-* Reports and export functionality
-* Calendar integration
-* Custom workflows
-* Role-based permissions
-* Third-party integrations
-* Email and notification automation
-
----
-
-## 🧪 Testing
-
-The application can be tested using:
-
-* Unit Testing
-* Integration Testing
-* API Testing
-* UI Testing
-* Functional Testing
-* Regression Testing
-
-API endpoints can be tested using tools such as Postman.
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-Make sure the following are installed:
-
-* Node.js
-* npm
-* Git
-* Required database
-* Code editor such as Visual Studio Code
-
-### Installation
-
-Clone the repository:
+**Requirements:** Node.js 18+, npm, a MongoDB URI (local or Atlas)
 
 ```bash
-git clone <repository-url>
-```
-
-Navigate to the project directory:
-
-```bash
+git clone <repo-url>
 cd agent-workspace
 ```
 
-Install dependencies:
+**Backend**
 
 ```bash
+cd server
 npm install
-```
-
-Start the development server:
-
-```bash
+cp .env.example .env      # fill in values below
 npm run dev
 ```
 
-The application will then be available through the local development URL shown in the terminal.
+**Frontend**
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+### Environment variables
+
+| App | Variable | Purpose |
+| --- | --- | --- |
+| Server | `PORT` | API port |
+| Server | `MONGO_URI` | MongoDB connection string |
+| Server | `JWT_SECRET` | Secret for signing tokens |
+| Server | `CLIENT_URL` | Allowed frontend origin (CORS) |
+| Client | `VITE_API_URL` | Base URL of the API |
 
 ---
 
-**Agent Workspace — Plan. Organize. Collaborate. Deliver.**🤖✅
+## Project structure
+
+```text
+agent-workspace/
+├── client/
+│   └── src/
+│       ├── components/
+│       ├── pages/
+│       ├── services/        # API calls
+│       ├── hooks/
+│       └── utils/
+├── server/
+│   ├── models/
+│   ├── routes/
+│   ├── controllers/
+│   ├── middleware/          # auth + role checks
+│   └── index.js
+└── README.md
+```
+
+---
+
+## What's next
+
+- [ ] Per-project permissions
+- [ ] Comments and @mentions
+- [ ] Real-time updates and notifications
+- [ ] Activity timeline
+- [ ] Dashboards and reports
+- [ ] File attachments
+
+---
+
+## Author
+
+**Yogita Sawant** 
+
+[GitHub](<github-url>) · [LinkedIn](<linkedin-url>)
