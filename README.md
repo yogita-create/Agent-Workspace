@@ -148,7 +148,7 @@ Task status flow: `To Do → In Progress → Review → Done`
 **Requirements:** Node.js 18+, npm, a MongoDB URI (local or Atlas)
 
 ```bash
-git clone <https://github.com/yogita-create/Agent-Workspace.git>
+git clone https://github.com/yogita-create/Agent-Workspace.git
 cd agent-workspace
 ```
 
