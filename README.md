@@ -208,14 +208,10 @@ agent-workspace/
 - [ ] Per-project permissions
 - [ ] Comments and @mentions
 - [ ] Real-time updates and notifications
-- [ ] Activity timeline
-- [ ] Dashboards and reports
 - [ ] File attachments
 
 ---
 
 ## Author
 
-**Yogita** — Full-stack developer (React, Node.js, Express, MongoDB)
-
-[LinkedIn](<https://www.linkedin.com/in/yogita-sawant-webdev>)
+**Yogita Sawant** — [LinkedIn](<https://www.linkedin.com/in/yogita-sawant-webdev>)
