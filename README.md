@@ -44,8 +44,8 @@ Built end to end: auth, access control, data modeling, REST API, UI, and deploym
 
 ## Screenshots
 
-### Kanban Board
-![Kanban Board](docs/board.png)
+### Tasks with Kanban Board
+![Kanban Board](docs/tasks.png)
 
 ### Epics View
 ![Epics View](docs/epics.png)
