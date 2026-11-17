@@ -13,7 +13,6 @@ A project management app where companies turn big goals into **Epics → Stories
 ![JWT](https://img.shields.io/badge/Auth-JWT-000000?style=flat&logo=jsonwebtokens&logoColor=white)
 ![Status](https://img.shields.io/badge/status-live-brightgreen?style=flat)
 
-[**Live Demo**](<frontend-url>) · [**API**](<backend-url>) · [**Report a Bug**](<repo-url>/issues)
 
 </div>
 
@@ -219,4 +218,4 @@ agent-workspace/
 
 **Yogita** — Full-stack developer (React, Node.js, Express, MongoDB)
 
-[GitHub](<github-url>) · [LinkedIn](<linkedin-url>)
+[LinkedIn](<https://www.linkedin.com/in/yogita-sawant-webdev>)
